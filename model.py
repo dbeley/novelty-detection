@@ -5,38 +5,26 @@ import argparse
 import logging
 import time
 import sys
-import torch
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
+from encoders.infersent import infersent_model
+from evaluation.score import calcul_seuil, calcul_score
+from evaluation.measures import mat_conf, all_measures
 
+pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
 temps_debut = time.time()
-pd.np.set_printoptions(threshold=sys.maxsize)
+
+# Variables globales
+SUPPORTED_ENCODER = ["infersent", "USE"]
+SUPPORTED_METHOD = ["score", "svm"]
+NB_ITERATION = 50
 
 
-def load_infersent_model(path="/home/david/Documents/InferSent/", pkl_path="/home/david/Documents/Données/infersent2.pkl", w2v_path = "/home/david/Documents/Données/glove.840B.300d.txt"):
-    """ Construit le model infersent """
-    # os.chdir(path)
-
-    logger.debug("Chargement du modèle infersent")
-    from models import InferSent
-    params_model = {'bsize': 64, 'word_emb_dim': 300, 'enc_lstm_dim': 2048,
-                    'pool_type': 'max', 'dpout_model': 0.0, 'version': 1}
-    model = InferSent(params_model)
-    model.load_state_dict(torch.load(pkl_path))
-
-    model.set_w2v_path(w2v_path)
-    logger.debug("Construction du vocabulaire")
-    model.build_vocab_k_words(K=100000)
-
-    return model
-
-
-def split_data(DATA, size_historic, size_context, size_novelty, theme):
+def split_data(data, size_historic, size_context, size_novelty, theme):
     """ Fonction qui genere le contexte et l historique """
-    novelty = DATA[DATA.theme == str(theme)]
-    no_novelty = DATA[DATA.theme != str(theme)]
+    novelty = data[data.theme == str(theme)]
+    no_novelty = data[data.theme != str(theme)]
     idx_novelty = list(novelty.index)
     idx_no_novelty = list(no_novelty.index)
 
@@ -46,170 +34,117 @@ def split_data(DATA, size_historic, size_context, size_novelty, theme):
 
     idx_historic = idx_all[0:size_historic]
     idx_context = idx_all[size_historic:] + random.sample(idx_novelty, size_novelty)
-    DATA_historic = DATA.iloc[idx_historic]
-    DATA_context = DATA.iloc[idx_context]
+    data_historic = data.iloc[idx_historic]
+    data_context = data.iloc[idx_context]
 
-    return DATA_historic, DATA_context
-
-
-def score_novelty(vector_historic, vector_context, m='cosinus', k=1, s=0):
-
-    """ Score de nouveauté """
-
-    """ Entrées :
-                  - vector_historic: les vecteurs représentatifs des documents de l'historique (np.array)
-                  - vector_context: les vecteurs représentatifs des documents du contexte (np.array)
-                  - m: la mesure utilisée, Cosinus ou Pearson (string)
-                  - k: le nombre de plus proches voisins utilisés (entier > 0)
-                  - s: un pas de décalage pour considérer le (s+1)eme à (s+k+1)eme plus proche voisin (entier >= 0)
-    """
-
-    """ Sorties :
-                  Renvoie un vecteur de score pour chaque document du contexte testé (np.array)
-    """
-
-    if m.lower() == 'pearson':
-        vector_context = np.transpose(np.transpose(vector_context) - vector_context.mean(axis=1))
-        vector_historic = np.transpose(np.transpose(vector_historic) - vector_historic.mean(axis=1))
-        
-    c = abs(cosine_similarity(vector_context, vector_historic))
-    d = 1 - c
-    d.sort(axis=1)
-
-    if k < 1:
-        k = 1
-
-    if k < s:
-        k = s + 1
-
-    return np.sum(d[:, s:(k+s)], axis=1) / k
-
-
-def calcul_seuil(vector_historic, m='cosinus', k=1, q=0.95):
-
-    """ Determination du seuil """
-
-    """ Entrées :
-                  - vector_historic: les vecteurs représentatifs des documents de l'historique (np.array)
-                  - m: la mesure utilisée, Cosinus ou Pearson (string)
-                  - k: le nombre de plus proches voisins utilisés (entier strictement positif)
-                  - q: ordre du quantile d'ordre q (pourcentage)
-    """
-
-    """ Sorties :
-                  Renvoie un seuil pour la detection de la nouveauté (float)
-    """
-
-    res = score_novelty(vector_historic, vector_historic, m=m, k=k, s=1)
-    return pd.Series(res).quantile(q)
-
-
-def calcul_score(vector_historic, vector_context, m='cosinus', k=1, s=0):
-
-    """ Score de nouveauté """
-
-    """ Entrées :
-                  - vector_historic: les vecteurs représentatifs des documents de l'historique (np.array)
-                  - vector_context: les vecteurs représentatifs des documents du contexte (np.array)
-                  - m: la mesure utilisée, Cosinus ou Pearson (string)
-                  - k: le nombre de plus proches voisins utilisés (entier > 0)
-                  - s: un pas de décalage pour considérer le (s+1)eme à (s+k+1)eme plus proche voisin (entier >= 0)
-    """
-
-    """ Sorties :
-                  Renvoie un vecteur de score pour chaque document du contexte testé (np.array)
-    """
-
-    if m.lower() == 'pearson':
-        vector_context = np.transpose(np.transpose(vector_context) - vector_context.mean(axis = 1))
-        vector_historic = np.transpose(np.transpose(vector_historic) - vector_historic.mean(axis = 1))
-
-    c = abs(cosine_similarity(vector_context, vector_historic))
-    d = 1 - c
-    d.sort(axis=1)
-
-    if k < 1:
-        k = 1
-
-    if k < s:
-        k = s + 1
-
-    return (np.sum(d[:, s:(k+s)], axis=1) / k)
-
-
-def mat_conf(OBS, PRED):
-    fp = sum([1 if obs == 0 and pred == 1 else 0 for obs, pred in zip(OBS, PRED)])
-    fn = sum([1 if obs == 1 and pred == 0 else 0 for obs, pred in zip(OBS, PRED)])
-    vp = sum([1 if obs == 1 and pred == 1 else 0 for obs, pred in zip(OBS, PRED)])
-    vn = sum([1 if obs == 0 and pred == 0 else 0 for obs, pred in zip(OBS, PRED)])
-
-    return fp, fn, vp, vn
+    return data_historic, data_context
 
 
 def main():
     args = parse_args()
+
+    # chargement des données
     data = pd.read_csv('Exports/datapapers_clean.csv')
     data.columns = ['id', 'abstract', 'theme']
     data = data.drop(['id'], axis=1)
 
+    # parsage des arguments
+    # theme = args.novelty
     theme = "theory"
-    modele = "infersent"
-    # methode = "score"
-    methode = args.method
-    if methode not in ["score", "svm"]:
-        logger.error(f"méthode {methode} non implémentée. Sortie du programme.")
+
+    encoder_name = args.encoder
+    if encoder_name not in SUPPORTED_ENCODER:
+        logger.error(f"encoder {encoder_name} non implémenté. Choix = {supported_encoder_name}")
         exit()
-    nb_iteration = 5
+
+    method = args.method
+    if method not in SUPPORTED_METHOD:
+        logger.error(f"méthode {method} non implémentée. Choix = {supported_method}")
+        exit()
 
     # à décommenter pour créer l'entête
+    liste_variables = ['theme',
+                       'encoder_name',
+                       'methode',
+                       'size_historic',
+                       'size_context',
+                       'size_novelty',
+                       'iteration',
+                       'AUC',
+                       'temps'
+                       'faux positifs',
+                       'faux négatifs',
+                       'vrais positifs',
+                       'vrais négatifs',
+                       'précision',
+                       'rappel',
+                       'accuracy',
+                       'fscore',
+                       'gmean'
+                       ]
     with open(f"Exports/Résultats.csv", 'a+') as f:
-        f.write(f"theme,modele,methode,size_historic,size_context,size_novelty,iteration,faux positifs,faux négatifs,vrais positifs,vrais négatifs,AUC,temps\n")
+        # f.write(f"theme;encoder_name;methode;size_historic;size_context;size_novelty;iteration;faux positifs;faux négatifs;vrais positifs;vrais négatifs;AUC;temps\n")
+        f.write(f"{';'.join(liste_variables)}\n")
 
-    # logger.debug(data)
-    list_size_historic = [1000, 1000, 1000, 1000, 1000]
-    list_size_context = [300, 300, 300, 100, 100]
-    list_size_novelty = [200, 100, 20, 50, 20]
-    # list_size_historic = [2000, 2000, 2000, 4000, 4000, 4000, 500, 500, 500]
-    # list_size_context = [300, 300, 300, 500, 1000, 1000, 30, 300]
-    # list_size_novelty = [20, 100, 200, 300, 100, 500, 10, 100]
+    #       historic, context, novelty
+    liste_exp = [[2000, 300, 50],
+                 [2000, 500, 50],
+                 [2000, 500, 100],
+                 [2000, 500, 200],
+                 [3000, 300, 20],
+                 [3000, 500, 200],
+                 [3000, 1000, 500]]
 
-    model = load_infersent_model()
+    import tensorflow as tf
+    import tensorflow_hub as hub
 
-    for size_historic, size_context, size_novelty in zip(list_size_historic, list_size_context, list_size_novelty):
-        for iteration in range(0, nb_iteration):
+    logger.debug("Chargement de l'encoder")
+    # encoder = load_infersent_model()
+    if encoder_name == "infersent":
+        encoder = infersent_model()
+    elif encoder_name == "USE":
+        module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
+
+        # Import the Universal Sentence Encoder's TF Hub module
+        encoder = hub.Module(module_url)
+        # encoder = USE_model()
+
+    # Tests
+    print(f"Novelty = {theme}, modèle = {encoder_name}, méthode = {method}")
+    for exp in liste_exp:
+        size_historic = exp[0]
+        size_context = exp[1]
+        size_novelty = exp[2]
+        for iteration in range(0, NB_ITERATION):
             temps_debut_iteration = time.time()
-            logger.debug(f"Nouvelle boucle, iteration {iteration}")
-            logger.debug(f"size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+            print(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
 
-            # data_historic, data_context = split_data(data, size_historic=2000, size_context=300, size_novelty=20, theme=theme)
-            data_historic, data_context = split_data(data, size_historic, size_context, size_novelty, theme=theme)
-            data_historic.to_csv('Exports/datapapers_historic.csv')
-            data_context.to_csv('Exports/datapapers_context.csv')
+            data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
 
-            # modèle infersent
-            # model = load_infersent_model()
+            # data_historic.to_csv('Exports/datapapers_historic.csv')
+            # data_context.to_csv('Exports/datapapers_context.csv')
+
+            # encoder
             logger.debug("Création des embeddings")
-            vector_historic = model.encode(list(data_historic.abstract.astype(str)), bsize=128, tokenize=False, verbose=False)
-            vector_context = model.encode(list(data_context.abstract.astype(str)), bsize=128, tokenize=False, verbose=False)
+            if encoder_name == "infersent":
+                vector_historic = encoder.get_embeddings(list(data_historic.abstract.astype(str)))
+                # vector_historic = encoder.encode(list(data_historic.abstract.astype(str)), bsize=128, tokenize=False, verbose=False)
+                vector_context = encoder.get_embeddings(list(data_context.abstract.astype(str)))
+                # vector_context = encoder.encode(list(data_context.abstract.astype(str)), bsize=128, tokenize=False, verbose=False)
+            elif encoder_name == "USE":
+                with tf.Session() as session:
+                    session.run([tf.global_variables_initializer(), tf.tables_initializer()])
+                    vector_historic = np.array(session.run(encoder(list(data_historic.abstract.astype(str))))).tolist()
+                    vector_context = np.array(session.run(encoder(list(data_context.abstract.astype(str))))).tolist()
 
-            with open('Exports/vector_historic.txt', 'w') as f:
-                for item in vector_historic:
-                    f.write("%s\n" % item)
-
-            with open('Exports/vector_context.txt', 'w') as f:
-                for item in vector_context:
-                    f.write("%s\n" % item)
-
-            if methode == "score":
+            # classification
+            if method == "score":
                 # calcul du score
                 logger.debug("Calcul du score")
                 seuil = calcul_seuil(vector_historic, m='cosinus', k=2, q=0.55)
-                # logger.debug(f"seuil : {seuil}")
                 score = calcul_score(vector_historic, vector_context, m='cosinus', k=1)
-                # logger.debug(f"score : {score}")
                 pred = [1 if x > seuil else 0 for x in score]
-                # logger.debug(pred)
-            if methode == "svm":
+            elif method == "svm":
                 logger.debug("Calcul avec svm")
                 mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
                                   cache_size=200, verbose=False, max_iter=-1, random_state=None)
@@ -219,29 +154,33 @@ def main():
 
                 score = mod.decision_function(vector_context)
 
-            logger.debug(f"Novelty = {theme}, modèle = {modele}, méthode = {methode}")
-            # affiche_mat_conf(OBS, PRED)
 
             obs = [1 if elt == theme else 0 for elt in data_context.theme]
             obs2 = [-1 if x == 1 else 1 for x in obs]
 
-            fp, fn, vp, vn = mat_conf(obs, pred)
+            matrice_confusion = mat_conf(obs, pred)
+            mesures = all_measures(obs, pred)
+            logger.debug(matrice_confusion)
+            logger.debug(mesures)
 
             AUC = roc_auc_score(obs2, score)
 
             logger.debug(AUC)
-            # Conserve_resultats['{}'.format(methode)] += np.array(all_measures(OBS, PRED) + [AUC])
             temps_iteration = "%.2f" % (time.time() - temps_debut_iteration)
+
+            # Export des résultats
             with open(f"Exports/Résultats.csv", 'a+') as f:
-                f.write(f"{ theme },{ modele },{ methode },{ size_historic },{ size_context },{ size_novelty },{ iteration+1 },{fp},{fn},{vp},{vn},{ AUC },{temps_iteration}\n")
+                f.write(f"{ theme };{ encoder_name };{ method };{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{temps_iteration};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
     logger.debug("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Preparation')
+    parser = argparse.ArgumentParser(description='Script principal')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
-    parser.add_argument('-m', '--method', help="Méthode", type=str)
+    parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
+    parser.add_argument('-e', '--encoder', help="Encodeur (infersent ou USE/universal sentence encoder", type=str)
+    parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str)
     # parser.add_argument('-t', '--train', help="Train", dest='train', action='store_true')
     # parser.set_defaults(train=False)
     args = parser.parse_args()
