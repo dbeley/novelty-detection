@@ -8,6 +8,7 @@ import sys
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
+from encoders.sent2vec import sent2vec_model
 from evaluation.score import calcul_seuil, calcul_score
 from evaluation.measures import mat_conf, all_measures
 
@@ -15,10 +16,20 @@ pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
 temps_debut = time.time()
 
+# commentaires et logs en FR, code et variables en ENG
 # Variables globales
-SUPPORTED_ENCODER = ["infersent", "USE"]
+SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec"]
 SUPPORTED_METHOD = ["score", "svm"]
-NB_ITERATION = 50
+ITERATION_NB = 50
+#       historic, context, novelty
+SAMPLES_LIST = [[2000, 300, 50],
+                [2000, 500, 50],
+                [2000, 500, 100],
+                [2000, 500, 200],
+                [3000, 300, 20],
+                [3000, 500, 200],
+                [3000, 1000, 500]]
+
 
 
 def split_data(data, size_historic, size_context, size_novelty, theme):
@@ -52,125 +63,124 @@ def main():
     # theme = args.novelty
     theme = "theory"
 
-    encoder_name = args.encoder
-    if encoder_name not in SUPPORTED_ENCODER:
-        logger.error(f"encoder {encoder_name} non implémenté. Choix = {supported_encoder_name}")
+    all_encoder = args.all_encoder
+    encoder = args.encoder
+    if encoder not in SUPPORTED_ENCODER and all_encoder is None:
+        logger.error(f"encoder {encoder} non implémenté. Choix = {SUPPORTED_ENCODER}")
         exit()
+    elif all_encoder:
+        logger.debug("option all_encoder sélectionnée. Sélection de tous les encodeurs")
+        encoder = SUPPORTED_ENCODER
 
     method = args.method
     if method not in SUPPORTED_METHOD:
-        logger.error(f"méthode {method} non implémentée. Choix = {supported_method}")
+        logger.error(f"méthode {method} non implémentée. Choix = {SUPPORTED_METHOD}")
         exit()
 
     # à décommenter pour créer l'entête
-    liste_variables = ['theme',
-                       'encoder_name',
-                       'methode',
-                       'size_historic',
-                       'size_context',
-                       'size_novelty',
-                       'iteration',
-                       'AUC',
-                       'temps'
-                       'faux positifs',
-                       'faux négatifs',
-                       'vrais positifs',
-                       'vrais négatifs',
-                       'précision',
-                       'rappel',
-                       'accuracy',
-                       'fscore',
-                       'gmean'
-                       ]
+    variables_list = ['theme',
+                      'encoder_name',
+                      'methode',
+                      'size_historic',
+                      'size_context',
+                      'size_novelty',
+                      'iteration',
+                      'AUC',
+                      'temps'
+                      'faux positifs',
+                      'faux négatifs',
+                      'vrais positifs',
+                      'vrais négatifs',
+                      'précision',
+                      'rappel',
+                      'accuracy',
+                      'fscore',
+                      'gmean'
+                      ]
     with open(f"Exports/Résultats.csv", 'a+') as f:
         # f.write(f"theme;encoder_name;methode;size_historic;size_context;size_novelty;iteration;faux positifs;faux négatifs;vrais positifs;vrais négatifs;AUC;temps\n")
-        f.write(f"{';'.join(liste_variables)}\n")
-
-    #       historic, context, novelty
-    liste_exp = [[2000, 300, 50],
-                 [2000, 500, 50],
-                 [2000, 500, 100],
-                 [2000, 500, 200],
-                 [3000, 300, 20],
-                 [3000, 500, 200],
-                 [3000, 1000, 500]]
+        f.write(f"{';'.join(variables_list)}\n")
 
     import tensorflow as tf
     import tensorflow_hub as hub
 
-    logger.debug("Chargement de l'encoder")
-    # encoder = load_infersent_model()
-    if encoder_name == "infersent":
-        encoder = infersent_model()
-    elif encoder_name == "USE":
-        module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
+    # Boucle sur les encodeurs sélectionnés
+    for single_encoder in encoder:
+        print(f"Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}")
 
-        # Import the Universal Sentence Encoder's TF Hub module
-        encoder = hub.Module(module_url)
-        # encoder = USE_model()
+        # Chargement de l'encodeur
+        logger.debug("Chargement de l'encoder")
+        if single_encoder == "infersent":
+            encoder_model = infersent_model()
+        elif single_encoder == "USE":
+            module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
 
-    # Tests
-    print(f"Novelty = {theme}, modèle = {encoder_name}, méthode = {method}")
-    for exp in liste_exp:
-        size_historic = exp[0]
-        size_context = exp[1]
-        size_novelty = exp[2]
-        for iteration in range(0, NB_ITERATION):
-            temps_debut_iteration = time.time()
-            print(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+            # Import the Universal Sentence Encoder's TF Hub module
+            encoder_model = hub.Module(module_url)
+        elif single_encoder == "sent2vec":
+            encoder_model = sent2vec_model()
 
-            data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
+        # Boucle sur les paramètres d'échantillons définis dans samples_list
+        for exp in SAMPLES_LIST:
+            size_historic = exp[0]
+            size_context = exp[1]
+            size_novelty = exp[2]
+            # Boucle d'itération
+            for iteration in range(0, ITERATION_NB):
+                iteration_begin = time.time()
+                print(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+                data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
 
-            # data_historic.to_csv('Exports/datapapers_historic.csv')
-            # data_context.to_csv('Exports/datapapers_context.csv')
+                # Export des jeux de données
+                # data_historic.to_csv('Exports/datapapers_historic.csv')
+                # data_context.to_csv('Exports/datapapers_context.csv')
 
-            # encoder
-            logger.debug("Création des embeddings")
-            if encoder_name == "infersent":
-                vector_historic = encoder.get_embeddings(list(data_historic.abstract.astype(str)))
-                # vector_historic = encoder.encode(list(data_historic.abstract.astype(str)), bsize=128, tokenize=False, verbose=False)
-                vector_context = encoder.get_embeddings(list(data_context.abstract.astype(str)))
-                # vector_context = encoder.encode(list(data_context.abstract.astype(str)), bsize=128, tokenize=False, verbose=False)
-            elif encoder_name == "USE":
-                with tf.Session() as session:
-                    session.run([tf.global_variables_initializer(), tf.tables_initializer()])
-                    vector_historic = np.array(session.run(encoder(list(data_historic.abstract.astype(str))))).tolist()
-                    vector_context = np.array(session.run(encoder(list(data_context.abstract.astype(str))))).tolist()
+                logger.debug("Création des embeddings")
+                if single_encoder in ["infersent", "sent2vec"]:
+                    vector_historic = encoder_model.get_embeddings(list(data_historic.abstract.astype(str)))
+                    vector_context = encoder_model.get_embeddings(list(data_context.abstract.astype(str)))
+                elif single_encoder == "USE":
+                    with tf.Session() as session:
+                        session.run([tf.global_variables_initializer(), tf.tables_initializer()])
+                        vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
+                        vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
 
-            # classification
-            if method == "score":
-                # calcul du score
-                logger.debug("Calcul du score")
-                seuil = calcul_seuil(vector_historic, m='cosinus', k=2, q=0.55)
-                score = calcul_score(vector_historic, vector_context, m='cosinus', k=1)
-                pred = [1 if x > seuil else 0 for x in score]
-            elif method == "svm":
-                logger.debug("Calcul avec svm")
-                mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
-                                  cache_size=200, verbose=False, max_iter=-1, random_state=None)
-                mod.fit(vector_historic)
-                y_pred = mod.predict(vector_context)
-                pred = [0 if x == 1 else 1 for x in y_pred]
+                # classification
+                if method == "score":
+                    # calcul du score
+                    logger.debug("Calcul du score")
+                    seuil = calcul_seuil(vector_historic, m='cosinus', k=2, q=0.55)
+                    score = calcul_score(vector_historic, vector_context, m='cosinus', k=1)
+                    pred = [1 if x > seuil else 0 for x in score]
+                elif method == "svm":
+                    logger.debug("Calcul avec svm")
+                    mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
+                                      cache_size=200, verbose=False, max_iter=-1, random_state=None)
+                    mod.fit(vector_historic)
+                    y_pred = mod.predict(vector_context)
+                    pred = [0 if x == 1 else 1 for x in y_pred]
 
-                score = mod.decision_function(vector_context)
+                    score = mod.decision_function(vector_context)
+                else:
+                    logger.error(f"Problème méthode {method}. Création des embeddings impossible")
+                    exit()
 
+                obs = [1 if elt == theme else 0 for elt in data_context.theme]
+                obs2 = [-1 if x == 1 else 1 for x in obs]
 
-            obs = [1 if elt == theme else 0 for elt in data_context.theme]
-            obs2 = [-1 if x == 1 else 1 for x in obs]
+                matrice_confusion = mat_conf(obs, pred)
+                mesures = all_measures(obs, pred)
+                logger.debug(matrice_confusion)
+                logger.debug(mesures)
 
-            matrice_confusion = mat_conf(obs, pred)
-            mesures = all_measures(obs, pred)
-            logger.debug(matrice_confusion)
-            logger.debug(mesures)
+                AUC = roc_auc_score(obs2, score)
 
-            AUC = roc_auc_score(obs2, score)
+                logger.debug(AUC)
+                iteration_time = "%.2f" % (time.time() - iteration_begin)
 
-            logger.debug(AUC)
-            temps_iteration = "%.2f" % (time.time() - temps_debut_iteration)
-
-            # Export des résultats
-            with open(f"Exports/Résultats.csv", 'a+') as f:
-                f.write(f"{ theme };{ encoder_name };{ method };{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{temps_iteration};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                # Export des résultats
+                with open(f"Exports/Résultats.csv", 'a+') as f:
+                    f.write(f"{ theme };{ single_encoder };{ method };{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
     logger.debug("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
@@ -180,9 +190,9 @@ def parse_args():
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
     parser.add_argument('-e', '--encoder', help="Encodeur (infersent ou USE/universal sentence encoder", type=str)
+    parser.add_argument('-a', '--all_encoder', help="Active tous les encodeurs implémentés", dest='all_encoder', action='store_true')
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str)
-    # parser.add_argument('-t', '--train', help="Train", dest='train', action='store_true')
-    # parser.set_defaults(train=False)
+    parser.set_defaults(all_encoder=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)
