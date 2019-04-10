@@ -63,13 +63,13 @@ def main():
     # theme = args.novelty
     theme = "theory"
 
-    all_encoder = args.all_encoder
+    all_encoders = args.all_encoders
     encoder = args.encoder
-    if encoder not in SUPPORTED_ENCODER and all_encoder is None:
+    if encoder not in SUPPORTED_ENCODER and all_encoders is None:
         logger.error(f"encoder {encoder} non implémenté. Choix = {SUPPORTED_ENCODER}")
         exit()
-    elif all_encoder:
-        logger.debug("option all_encoder sélectionnée. Sélection de tous les encodeurs")
+    elif all_encoders:
+        logger.debug("option all_encoders sélectionnée. Sélection de tous les encodeurs")
         encoder = SUPPORTED_ENCODER
 
     method = args.method
@@ -190,9 +190,9 @@ def parse_args():
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
     parser.add_argument('-e', '--encoder', help="Encodeur (infersent ou USE/universal sentence encoder", type=str)
-    parser.add_argument('-a', '--all_encoder', help="Active tous les encodeurs implémentés", dest='all_encoder', action='store_true')
+    parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str)
-    parser.set_defaults(all_encoder=False)
+    parser.set_defaults(all_encoders=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)
