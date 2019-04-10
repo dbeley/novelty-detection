@@ -23,13 +23,15 @@ SUPPORTED_METHOD = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 50],
+                [2000, 300, 10],
+                [2000, 300, 150],
+                [2000, 500, 10],
                 [2000, 500, 50],
                 [2000, 500, 100],
-                [2000, 500, 200],
-                [3000, 300, 20],
-                [3000, 500, 200],
-                [3000, 1000, 500]]
-
+                [2000, 500, 250],
+                [5000, 500, 100],
+                [5000, 500, 20]
+                ]
 
 
 def split_data(data, size_historic, size_context, size_novelty, theme):
@@ -64,8 +66,8 @@ def main():
     theme = "theory"
 
     all_encoders = args.all_encoders
-    encoder = args.encoder
-    if encoder not in SUPPORTED_ENCODER and all_encoders is None:
+    encoder = [args.encoder]
+    if encoder[0] not in SUPPORTED_ENCODER and all_encoders is None:
         logger.error(f"encoder {encoder} non implémenté. Choix = {SUPPORTED_ENCODER}")
         exit()
     elif all_encoders:
@@ -177,6 +179,12 @@ def main():
 
                 logger.debug(AUC)
                 iteration_time = "%.2f" % (time.time() - iteration_begin)
+
+                # Arrondi des résultats numériques
+                AUC = round(AUC, 2)
+                # iteration_time = round(iteration_time, 2)
+                # matrice_confusion = [round(x, 2) for x in matrice_confusion]
+                mesures = [round(x, 2) for x in mesures]
 
                 # Export des résultats
                 with open(f"Exports/Résultats.csv", 'a+') as f:

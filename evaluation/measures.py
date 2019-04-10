@@ -20,7 +20,11 @@ def all_measures(OBS, PRED):
     
     """ Retourne le calcul de la précison, du rappel, de l'accuracy, de la f-mesure, de la g-mean mesure """
     
-    fp, fn, vp, vn = mat_conf(OBS, PRED)
+    mat = mat_conf(OBS, PRED)
+    fp = mat[0]
+    fn = mat[1]
+    vp = mat[2]
+    vn = mat[3]
 
     # precision
     precision = 0
@@ -52,5 +56,4 @@ def all_measures(OBS, PRED):
     F-score : {fscore}\n
     G-mean : {gmean}\n""")
 
-    # return precision, rappel, accuracy, fscore, gmean
     return [precision, rappel, accuracy, fscore, gmean]
