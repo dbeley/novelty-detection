@@ -12,6 +12,7 @@ import sys
 logger = logging.getLogger()
 temps_debut = time.time()
 pd.np.set_printoptions(threshold=sys.maxsize)
+DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 
 
 def petit_nettoyage(ligne, lem_v=True, lem_n=True, len_elt=2, stopw=[]):
@@ -67,8 +68,7 @@ def main():
     nltk.download("wordnet")
 
     logger.debug("Chargement des données")
-    datapapers = os.path.expanduser("~/Documents/Données/datapapers.csv")
-    data = pd.read_csv(datapapers, sep="\t", encoding="utf-8")
+    data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
     data = data[['abstract', 'theme']]
 
     logger.debug("Chargement des stopwords")
@@ -89,9 +89,6 @@ def main():
 def parse_args():
     parser = argparse.ArgumentParser(description='Preparation')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
-    # parser.add_argument('-m', '--method', help="Méthode", type=str)
-    # parser.add_argument('-t', '--train', help="Train", dest='train', action='store_true')
-    # parser.set_defaults(train=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)

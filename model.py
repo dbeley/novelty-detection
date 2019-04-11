@@ -5,6 +5,7 @@ import argparse
 import logging
 import time
 import sys
+import os
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
@@ -18,19 +19,22 @@ temps_debut = time.time()
 
 # commentaires et logs en FR, code et variables en ENG
 # Variables globales
+PATH_INFERSENT_PKL = os.path.expanduser("~/Documents/Données/infersent2.pkl")
+PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.txt")
+PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
 SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec"]
 SUPPORTED_METHOD = ["score", "svm"]
-ITERATION_NB = 50
+ITERATION_NB = 1
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 50],
-                [2000, 300, 10],
-                [2000, 300, 150],
-                [2000, 500, 10],
-                [2000, 500, 50],
-                [2000, 500, 100],
-                [2000, 500, 250],
-                [5000, 500, 100],
-                [5000, 500, 20]
+                # [2000, 300, 10],
+                # [2000, 300, 150],
+                # [2000, 500, 10],
+                # [2000, 500, 50],
+                # [2000, 500, 100],
+                # [2000, 500, 250],
+                # [5000, 500, 100],
+                # [5000, 500, 20]
                 ]
 
 
@@ -62,8 +66,8 @@ def main():
     data = data.drop(['id'], axis=1)
 
     # parsage des arguments
-    # theme = args.novelty
-    theme = "theory"
+    theme = args.novelty
+    # theme = "theory"
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
@@ -83,6 +87,7 @@ def main():
     variables_list = ['theme',
                       'encoder_name',
                       'methode',
+                      'novelty class',
                       'size_historic',
                       'size_context',
                       'size_novelty',
@@ -113,14 +118,14 @@ def main():
         # Chargement de l'encodeur
         logger.debug("Chargement de l'encoder")
         if single_encoder == "infersent":
-            encoder_model = infersent_model()
+            encoder_model = infersent_model(pkl_path=PATH_INFERSENT_PKL, w2v_path=PATH_INFERSENT_W2V)
+        elif single_encoder == "sent2vec":
+            encoder_model = sent2vec_model(model_path=PATH_SENT2VEC_BIN)
         elif single_encoder == "USE":
             module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
 
             # Import the Universal Sentence Encoder's TF Hub module
             encoder_model = hub.Module(module_url)
-        elif single_encoder == "sent2vec":
-            encoder_model = sent2vec_model()
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
@@ -133,19 +138,24 @@ def main():
                 print(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
                 data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
 
-                # Export des jeux de données
+                # Export des jeux de données pour débogage
                 # data_historic.to_csv('Exports/datapapers_historic.csv')
                 # data_context.to_csv('Exports/datapapers_context.csv')
 
                 logger.debug("Création des embeddings")
                 if single_encoder in ["infersent", "sent2vec"]:
+                    # classes génériques définies dans encoders/model_*.py
+                    # deux méthodes : __init__ et get_embeddings
                     vector_historic = encoder_model.get_embeddings(list(data_historic.abstract.astype(str)))
                     vector_context = encoder_model.get_embeddings(list(data_context.abstract.astype(str)))
                 elif single_encoder == "USE":
+                    # classe spécifique pour USE
                     with tf.Session() as session:
                         session.run([tf.global_variables_initializer(), tf.tables_initializer()])
                         vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
                         vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
+                        session.close()
+                    tf.reset_default_graph()
 
                 # classification
                 if method == "score":
@@ -155,7 +165,7 @@ def main():
                     score = calcul_score(vector_historic, vector_context, m='cosinus', k=1)
                     pred = [1 if x > seuil else 0 for x in score]
                 elif method == "svm":
-                    logger.debug("Calcul avec svm")
+                    logger.debug("Classif avec svm")
                     mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
                                       cache_size=200, verbose=False, max_iter=-1, random_state=None)
                     mod.fit(vector_historic)
@@ -180,7 +190,7 @@ def main():
                 logger.debug(AUC)
                 iteration_time = "%.2f" % (time.time() - iteration_begin)
 
-                # Arrondi des résultats numériques
+                # Arrondi des résultats numériques avant export
                 AUC = round(AUC, 2)
                 # iteration_time = round(iteration_time, 2)
                 # matrice_confusion = [round(x, 2) for x in matrice_confusion]
@@ -188,7 +198,7 @@ def main():
 
                 # Export des résultats
                 with open(f"Exports/Résultats.csv", 'a+') as f:
-                    f.write(f"{ theme };{ single_encoder };{ method };{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                    f.write(f"{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
     logger.debug("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
@@ -199,7 +209,7 @@ def parse_args():
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
     parser.add_argument('-e', '--encoder', help="Encodeur (infersent ou USE/universal sentence encoder", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
-    parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str)
+    parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')
     parser.set_defaults(all_encoders=False)
     args = parser.parse_args()
 
