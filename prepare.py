@@ -8,6 +8,7 @@ import argparse
 import logging
 import time
 import sys
+import errno
 
 logger = logging.getLogger()
 temps_debut = time.time()
@@ -61,6 +62,15 @@ def drop_little_line(data, seuil):
 
 def main():
     args = parse_args()
+
+
+    # Création du dossier Exports si non existant
+    if not os.path.exists("Exports"):
+        try:
+            os.makedirs("Exports")
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
 
     logger.debug("Téléchargement fichiers nltk")
     nltk.download("punkt")

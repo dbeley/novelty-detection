@@ -17,7 +17,6 @@ pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
 temps_debut = time.time()
 
-# commentaires et logs en FR, code et variables en ENG
 # Variables globales
 PATH_INFERSENT_PKL = os.path.expanduser("~/Documents/Données/infersent2.pkl")
 PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.txt")
@@ -61,13 +60,17 @@ def main():
     args = parse_args()
 
     # chargement des données
-    data = pd.read_csv('Exports/datapapers_clean.csv')
-    data.columns = ['id', 'abstract', 'theme']
-    data = data.drop(['id'], axis=1)
+    try:
+        data = pd.read_csv('Exports/datapapers_clean.csv')
+        data.columns = ['id', 'abstract', 'theme']
+        data = data.drop(['id'], axis=1)
+    except Exception as e:
+        logger.error(str(e))
+        logger.error("Fichier datapapers_clean.csv non trouvé dans le dossier Exports. Lancez le script prepare.py")
+        exit()
 
     # parsage des arguments
     theme = args.novelty
-    # theme = "theory"
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
@@ -104,6 +107,7 @@ def main():
                       'fscore',
                       'gmean'
                       ]
+
     with open(f"Exports/Résultats.csv", 'a+') as f:
         # f.write(f"theme;encoder_name;methode;size_historic;size_context;size_novelty;iteration;faux positifs;faux négatifs;vrais positifs;vrais négatifs;AUC;temps\n")
         f.write(f"{';'.join(variables_list)}\n")
