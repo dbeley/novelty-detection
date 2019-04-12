@@ -72,20 +72,20 @@ def main():
             if exc.errno != errno.EEXIST:
                 raise
 
-    logger.debug("Téléchargement fichiers nltk")
+    print("Téléchargement fichiers nltk")
     nltk.download("punkt")
     nltk.download("stopwords")
     nltk.download("wordnet")
 
-    logger.debug("Chargement des données")
+    print("Chargement des données")
     data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
     data = data[['abstract', 'theme']]
 
-    logger.debug("Chargement des stopwords")
+    print("Chargement des stopwords")
     en_stopw = [str(x) for x in stopwords.words('english')]
-    logger.debug("Nettoyage des données")
+    print("Nettoyage des données")
     data = nettoyage(data, lem_v=True, lem_n=False, len_elt=3, stopw=en_stopw)
-    logger.debug("Suppression des petites lignes")
+    print("Suppression des petites lignes")
     data = drop_little_line(data, 10)
 
     vocab = data.abstract.str.split()
@@ -93,7 +93,7 @@ def main():
 
     data.to_csv("Exports/datapapers_clean.csv")
 
-    logger.debug("Runtime : %.2f seconds" % (time.time() - temps_debut))
+    print("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
 
 def parse_args():

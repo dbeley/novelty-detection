@@ -96,7 +96,7 @@ def main():
                       'size_novelty',
                       'iteration',
                       'AUC',
-                      'temps'
+                      'temps',
                       'faux positifs',
                       'faux négatifs',
                       'vrais positifs',
@@ -159,7 +159,6 @@ def main():
                         vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
                         vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
                         session.close()
-                    tf.reset_default_graph()
 
                 # classification
                 if method == "score":
