@@ -10,6 +10,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
 from encoders.sent2vec import sent2vec_model
+from encoders.word2vec import word2vec_model, word2vec_mean_model
 from evaluation.score import calcul_seuil, calcul_score
 from evaluation.measures import mat_conf, all_measures
 
@@ -18,12 +19,17 @@ logger = logging.getLogger()
 temps_debut = time.time()
 
 # Variables globales
+DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
+# infersent
 PATH_INFERSENT_PKL = os.path.expanduser("~/Documents/Données/infersent2.pkl")
 PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.txt")
+# sent2vec
 PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
-SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec"]
+# fasttext
+PATH_CRAWL = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
+SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec", "fasttext"]
 SUPPORTED_METHOD = ["score", "svm"]
-ITERATION_NB = 1
+ITERATION_NB = 50
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 50],
                 # [2000, 300, 10],
@@ -34,6 +40,18 @@ SAMPLES_LIST = [[2000, 300, 50],
                 # [2000, 500, 250],
                 # [5000, 500, 100],
                 # [5000, 500, 20]
+                # [5000, 500, 100],
+                # [5000, 500, 30],
+                # [10000, 1000, 200],
+                # [2000, 300, 200],
+                # [2000, 300, 250],
+                # [2000, 300, 20],
+                # [4000, 600, 300],
+                # [4000, 600, 400],
+                # [10000, 300, 50],
+                # [10000, 300, 150],
+                # [10000, 600, 50],
+                # [10000, 600, 150]
                 ]
 
 
@@ -59,18 +77,31 @@ def split_data(data, size_historic, size_context, size_novelty, theme):
 def main():
     args = parse_args()
 
-    # chargement des données
-    try:
-        data = pd.read_csv('Exports/datapapers_clean.csv')
-        data.columns = ['id', 'abstract', 'theme']
-        data = data.drop(['id'], axis=1)
-    except Exception as e:
-        logger.error(str(e))
-        logger.error("Fichier datapapers_clean.csv non trouvé dans le dossier Exports. Lancez le script prepare.py")
-        exit()
-
     # parsage des arguments
+    without_preprocessing = args.without_preprocessing
     theme = args.novelty
+
+    # chargement des données
+    if without_preprocessing:
+        logger.debug("Utilisation du jeu de données datapapers.csv")
+        try:
+            data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
+            # data.columns = ['id', 'conf', 'title', 'author', 'year', 'abstract', 'eq', 'conf_short', 'theme']
+            data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
+        except Exception as e:
+            logger.error(str(e))
+            logger.error("Fichier datapapers_clean.csv non trouvé dans le dossier Exports. Lancez le script prepare.py")
+            exit()
+    else:
+        logger.debug("Utilisation du jeu de données datapapers_clean.csv")
+        try:
+            data = pd.read_csv('Exports/datapapers_clean.csv')
+            data.columns = ['id', 'abstract', 'theme']
+            data = data.drop(['id'], axis=1)
+        except Exception as e:
+            logger.error(str(e))
+            logger.error("Fichier datapapers_clean.csv non trouvé dans le dossier Exports. Lancez le script prepare.py")
+            exit()
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
@@ -130,6 +161,8 @@ def main():
 
             # Import the Universal Sentence Encoder's TF Hub module
             encoder_model = hub.Module(module_url)
+        elif single_encoder == "fasttext":
+            encoder_model = word2vec_model(vec_path=PATH_CRAWL)
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
@@ -159,7 +192,9 @@ def main():
                         vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
                         vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
                         session.close()
-
+                elif single_encoder == "fasttext":
+                    vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
+                    vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
                 # classification
                 if method == "score":
                     # calcul du score
@@ -185,13 +220,14 @@ def main():
 
                 matrice_confusion = mat_conf(obs, pred)
                 mesures = all_measures(obs, pred)
-                logger.debug(matrice_confusion)
-                logger.debug(mesures)
+                logger.debug(f"matrice : {matrice_confusion}")
+                logger.debug(f"mesures : {mesures}")
 
                 AUC = roc_auc_score(obs2, score)
 
-                logger.debug(AUC)
+                logger.debug(f"AUC : .{AUC}")
                 iteration_time = "%.2f" % (time.time() - iteration_begin)
+                logger.debug(f"temps itération = {iteration_time}")
 
                 # Arrondi des résultats numériques avant export
                 AUC = round(AUC, 2)
@@ -203,17 +239,18 @@ def main():
                 with open(f"Exports/Résultats.csv", 'a+') as f:
                     f.write(f"{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
-    logger.debug("Runtime : %.2f seconds" % (time.time() - temps_debut))
+    print("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Script principal')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
-    parser.add_argument('-e', '--encoder', help="Encodeur (infersent ou USE/universal sentence encoder", type=str)
+    parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE ou fasttext)", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
+    parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données initial, sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')
-    parser.set_defaults(all_encoders=False)
+    parser.set_defaults(all_encoders=False, without_preprocessing=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)

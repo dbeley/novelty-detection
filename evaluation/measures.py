@@ -37,7 +37,7 @@ def all_measures(OBS, PRED):
         rappel = vp / (vp + fn)
 
     # accuracy
-    accuracy = vp + vn / len(OBS)
+    accuracy = (vp + vn) / len(OBS)
 
     # fscore
     b = 1
@@ -50,10 +50,11 @@ def all_measures(OBS, PRED):
     if ((vp + fp) * (vp + fn)) == 0:
         gmean = 0
 
-    logger.debug(f"""Précision : {precision}\n
-    Rappel : {rappel}\n
-    Accuracy : {accuracy}\n
-    F-score : {fscore}\n
-    G-mean : {gmean}\n""")
+    logger.debug(f"""
+    Précision : {precision}
+    Rappel : {rappel}
+    Accuracy : {accuracy}
+    F-score : {fscore}
+    G-mean : {gmean}""")
 
     return [precision, rappel, accuracy, fscore, gmean]
