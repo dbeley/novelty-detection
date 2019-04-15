@@ -11,7 +11,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
 from encoders.sent2vec import sent2vec_model
-from encoders.word2vec import word2vec_model, word2vec_mean_model
+# from encoders.word2vec import word2vec_model, word2vec_mean_model
+from encoders.word2vec import word2vec_mean_model
 from evaluation.score import calcul_seuil, calcul_score
 from evaluation.measures import mat_conf, all_measures
 # import tensorflow as tf
@@ -23,11 +24,6 @@ from gensim.models import KeyedVectors
 
 pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
-# handler = logging.StreamHandler(sys.stdout)
-# handler.setLevel(logging.DEBUG)
-# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# handler.setFormatter(formatter)
-# logger.addHandler(handler)
 
 temps_debut = time.time()
 
@@ -193,6 +189,7 @@ def main():
             encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
             # encoder_model = word2vec_model(vec_path=PATH_CRAWL)
+            print(f"Chargement du modèle fasstext ({PATH_CRAWL})")
             encoder_model = KeyedVectors.load_word2vec_format(PATH_CRAWL)
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
