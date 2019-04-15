@@ -14,13 +14,21 @@ from encoders.sent2vec import sent2vec_model
 from encoders.word2vec import word2vec_model, word2vec_mean_model
 from evaluation.score import calcul_seuil, calcul_score
 from evaluation.measures import mat_conf, all_measures
-import tensorflow as tf
-import tensorflow_hub as hub
+# import tensorflow as tf
+# import tensorflow_hub as hub
+# à décommenter pour USE
+from encoders.universal_sentence_encoder import hub_module, get_USE_embeddings
 
 
 pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
-temps_debut = time.time()
+# handler = logging.StreamHandler(sys.stdout)
+# handler.setLevel(logging.DEBUG)
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# handler.setFormatter(formatter)
+# logger.addHandler(handler)
+
+Temps_debut = time.time()
 
 # Variables globales
 DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
@@ -31,7 +39,9 @@ PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.tx
 PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
 # fasttext
 PATH_CRAWL = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
+# à décommenter pour USE
 SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec", "fasttext"]
+# SUPPORTED_ENCODER = ["infersent", "sent2vec", "fasttext"]
 SUPPORTED_METHOD = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
@@ -110,11 +120,13 @@ def main():
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
-    if encoder[0] not in SUPPORTED_ENCODER and all_encoders is None:
-        logger.error(f"encoder {encoder} non implémenté. Choix = {SUPPORTED_ENCODER}")
-        exit()
+    # if encoder[0] not in SUPPORTED_ENCODER and all_encoders is None:
+    #     logger.error(f"encoder {encoder} non implémenté. Choix = {SUPPORTED_ENCODER}")
+    #     exit()
+    if encoder[0] in SUPPORTED_ENCODER and not all_encoders:
+        logger.debug(f"Encodeur {encoder[0]} sélectionné.")
     elif all_encoders:
-        logger.debug("option all_encoders sélectionnée. Sélection de tous les encodeurs")
+        logger.debug("Option all_encoders sélectionnée. Sélection de tous les encodeurs")
         encoder = SUPPORTED_ENCODER
     else:
         logger.error("Utiliser -e ou -a pour sélectionner un ou plusieurs encodeurs. -h pour plus d'informations.")
@@ -122,7 +134,7 @@ def main():
 
     method = args.method
     if method not in SUPPORTED_METHOD:
-        logger.error(f"méthode {method} non implémentée. Choix = {SUPPORTED_METHOD}")
+        logger.error(f"Méthode {method} non implémentée. Choix = {SUPPORTED_METHOD}")
         exit()
 
     variables_list = ['ID',
@@ -171,11 +183,13 @@ def main():
             encoder_model = infersent_model(pkl_path=PATH_INFERSENT_PKL, w2v_path=PATH_INFERSENT_W2V)
         elif single_encoder == "sent2vec":
             encoder_model = sent2vec_model(model_path=PATH_SENT2VEC_BIN)
+        # à décommenter pour USE
         elif single_encoder == "USE":
             module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
 
-            # Import the Universal Sentence Encoder's TF Hub module
-            encoder_model = hub.Module(module_url)
+            # # Import the Universal Sentence Encoder's TF Hub module
+            # encoder_model = hub.Module(module_url)
+            encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
             encoder_model = word2vec_model(vec_path=PATH_CRAWL)
 
@@ -193,6 +207,7 @@ def main():
             AUC_list = []
             matrice_confusion_list = []
             mesures_list = []
+            iteration_time_list = []
 
             # Boucle d'itération
             for iteration in range(0, ITERATION_NB):
@@ -210,16 +225,20 @@ def main():
                     # deux méthodes : __init__ et get_embeddings
                     vector_historic = encoder_model.get_embeddings(list(data_historic.abstract.astype(str)))
                     vector_context = encoder_model.get_embeddings(list(data_context.abstract.astype(str)))
+                # à décommenter pour USE
                 elif single_encoder == "USE":
                     # classe spécifique pour USE
-                    with tf.Session() as session:
-                        session.run([tf.global_variables_initializer(), tf.tables_initializer()])
-                        vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
-                        vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
-                        session.close()
+                    # with tf.Session() as session:
+                    #     session.run([tf.global_variables_initializer(), tf.tables_initializer()])
+                    #     vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
+                    #     vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
+                    #     session.close()
+                    vector_historic = get_USE_embeddings(list(data_historic.abstract.astype(str)))
+                    vector_context = get_USE_embeddings(list(data_context.abstract.astype(str)))
                 elif single_encoder == "fasttext":
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
+
                 # classification
                 if method == "score":
                     # calcul du score
@@ -258,6 +277,7 @@ def main():
                 AUC_list.append(AUC)
                 matrice_confusion_list.append(matrice_confusion)
                 mesures_list.append(mesures)
+                iteration_time_list.append(iteration_time)
 
                 # Arrondi des résultats numériques avant export
                 AUC = round(AUC, 2)
@@ -271,13 +291,14 @@ def main():
 
             # Création résultats condensés
             AUC_condensed = sum(AUC_list) / float(len(AUC_list))
+            iteration_time_condensed = sum(iteration_time_list) / float(len(iteration_time_list))
             matrice_confusion_condensed = np.round(np.mean(np.array(matrice_confusion_list), axis=0), 2)
             mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
 
             # Export des résultats condensés
 
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
+                f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
     print("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
@@ -286,7 +307,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Script principal')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
+    # à décommenter pour USE
     parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE ou fasttext)", type=str)
+    # parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec ou fasttext)", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
     parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données initial, sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')

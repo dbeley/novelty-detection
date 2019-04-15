@@ -17,8 +17,12 @@ class word2vec_model(KeyedVectors):
 
 def word2vec_mean_model(model, data):
     mean_vectors = []
+    logger.debug("fonction word2vec_mean_model")
     for doc in data:
-        vectors = [x for x in model.get_embeddings(doc.split())]
+        logger.debug(f"doc.split : {doc.split()}")
+        # vectors = model.get_embeddings(doc.split())
+        vectors = model[doc.split()]
+        # vectors = [x for x in model.get_embeddings(doc.split())]
         vectors = np.array(vectors).astype(np.float)
         mean_vectors.append(vectors.mean(axis=0))
     return mean_vectors
