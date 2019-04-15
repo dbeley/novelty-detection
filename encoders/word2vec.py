@@ -21,8 +21,15 @@ def word2vec_mean_model(model, data):
     for doc in data:
         logger.debug(f"doc.split : {doc.split()}")
         # vectors = model.get_embeddings(doc.split())
-        vectors = model[doc.split()]
+        vectors = []
+        for word in doc.split():
+            try:
+                vectors.append(model[word])
+            except Exception as e:
+                logger.warning(f"{e}")
+                with open("Exports/word2vec_not_found.csv", 'a+') as f:
+                    f.write(f"{word}\n")
         # vectors = [x for x in model.get_embeddings(doc.split())]
         vectors = np.array(vectors).astype(np.float)
         mean_vectors.append(vectors.mean(axis=0))
-    return mean_vectors
+    return mean_vectors.tolist()

@@ -235,8 +235,8 @@ def main():
                     #     vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
                     #     vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
                     #     session.close()
-                    vector_historic = get_USE_embeddings(list(data_historic.abstract.astype(str)))
-                    vector_context = get_USE_embeddings(list(data_context.abstract.astype(str)))
+                    vector_historic = get_USE_embeddings(encoder_model, list(data_historic.abstract.astype(str)))
+                    vector_context = get_USE_embeddings(encoder_model, list(data_context.abstract.astype(str)))
                 elif single_encoder == "fasttext":
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
@@ -292,8 +292,8 @@ def main():
                     f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
             # Création résultats condensés
-            AUC_condensed = sum(AUC_list) / float(len(AUC_list))
-            iteration_time_condensed = sum(iteration_time_list) / float(len(iteration_time_list))
+            AUC_condensed = round(sum(AUC_list) / float(len(AUC_list)), 2)
+            iteration_time_condensed = round(sum(iteration_time_list) / float(len(iteration_time_list)), 2)
             matrice_confusion_condensed = np.round(np.mean(np.array(matrice_confusion_list), axis=0), 2)
             mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
 
