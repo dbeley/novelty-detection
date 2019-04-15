@@ -11,16 +11,11 @@ from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
 from encoders.sent2vec import sent2vec_model
-# from encoders.word2vec import word2vec_model, word2vec_mean_model
 from encoders.word2vec import word2vec_mean_model
 from evaluation.score import calcul_seuil, calcul_score
 from evaluation.measures import mat_conf, all_measures
-# import tensorflow as tf
-# import tensorflow_hub as hub
-# à décommenter pour USE
 from encoders.universal_sentence_encoder import hub_module, get_USE_embeddings
 from gensim.models import KeyedVectors
-
 
 pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
@@ -36,9 +31,7 @@ PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.tx
 PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
 # fasttext
 PATH_CRAWL = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
-# à décommenter pour USE
 SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec", "fasttext"]
-# SUPPORTED_ENCODER = ["infersent", "sent2vec", "fasttext"]
 SUPPORTED_METHOD = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
@@ -87,6 +80,21 @@ def split_data(data, size_historic, size_context, size_novelty, theme):
 
 def main():
     args = parse_args()
+
+    # Work around TensorFlow's absl.logging depencency which alters the
+    # default Python logging output behavior when present.
+    if 'absl.logging' in sys.modules:
+        print("Tentative de correction de la verbosité des logs")
+        import absl.logging
+        if args.loglevel == 20:
+            print("Logging : info")
+            absl.logging.set_verbosity('info')
+            absl.logging.set_stderrthreshold('info')
+        if args.loglevel == 10:
+            print("Logging : debug")
+            absl.logging.set_verbosity('debug')
+            absl.logging.set_stderrthreshold('debug')
+        # and any other apis you want, if you want
 
     # parsage des arguments
     without_preprocessing = args.without_preprocessing
@@ -180,16 +188,13 @@ def main():
             encoder_model = infersent_model(pkl_path=PATH_INFERSENT_PKL, w2v_path=PATH_INFERSENT_W2V)
         elif single_encoder == "sent2vec":
             encoder_model = sent2vec_model(model_path=PATH_SENT2VEC_BIN)
-        # à décommenter pour USE
         elif single_encoder == "USE":
             module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
 
             # # Import the Universal Sentence Encoder's TF Hub module
-            # encoder_model = hub.Module(module_url)
             encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
-            # encoder_model = word2vec_model(vec_path=PATH_CRAWL)
-            print(f"Chargement du modèle fasstext ({PATH_CRAWL})")
+            print(f"Chargement du modèle fasstext ({PATH_CRAWL}) (~15 minutes)")
             encoder_model = KeyedVectors.load_word2vec_format(PATH_CRAWL)
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
@@ -224,14 +229,7 @@ def main():
                     # deux méthodes : __init__ et get_embeddings
                     vector_historic = encoder_model.get_embeddings(list(data_historic.abstract.astype(str)))
                     vector_context = encoder_model.get_embeddings(list(data_context.abstract.astype(str)))
-                # à décommenter pour USE
                 elif single_encoder == "USE":
-                    # classe spécifique pour USE
-                    # with tf.Session() as session:
-                    #     session.run([tf.global_variables_initializer(), tf.tables_initializer()])
-                    #     vector_historic = np.array(session.run(encoder_model(list(data_historic.abstract.astype(str))))).tolist()
-                    #     vector_context = np.array(session.run(encoder_model(list(data_context.abstract.astype(str))))).tolist()
-                    #     session.close()
                     vector_historic = get_USE_embeddings(encoder_model, list(data_historic.abstract.astype(str)))
                     vector_context = get_USE_embeddings(encoder_model, list(data_context.abstract.astype(str)))
                 elif single_encoder == "fasttext":
@@ -306,9 +304,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Script principal')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
-    # à décommenter pour USE
     parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE ou fasttext)", type=str)
-    # parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec ou fasttext)", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
     parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données initial, sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')

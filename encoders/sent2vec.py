@@ -1,5 +1,5 @@
-from sent2vec import Sent2vecModel
 import logging
+from sent2vec import Sent2vecModel
 
 logger = logging.getLogger(__name__)
 
