@@ -114,6 +114,9 @@ def main():
     elif all_encoders:
         logger.debug("option all_encoders sélectionnée. Sélection de tous les encodeurs")
         encoder = SUPPORTED_ENCODER
+    else:
+        logger.error("Utiliser -e ou -a pour sélectionner un ou plusieurs encodeurs. -h pour plus d'informations.")
+        exit()
 
     method = args.method
     if method not in SUPPORTED_METHOD:
