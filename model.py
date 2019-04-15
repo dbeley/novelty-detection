@@ -88,6 +88,7 @@ def main():
     # chargement des données
     if without_preprocessing:
         logger.debug("Utilisation du jeu de données datapapers.csv")
+        data_filename = "datapapers.csv"
         try:
             data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
             data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
@@ -97,6 +98,7 @@ def main():
             exit()
     else:
         logger.debug("Utilisation du jeu de données datapapers_clean.csv")
+        data_filename = "datapapers_clean.csv"
         try:
             data = pd.read_csv('Exports/datapapers_clean.csv')
             data.columns = ['id', 'abstract', 'theme']
@@ -124,6 +126,7 @@ def main():
         exit()
 
     variables_list = ['ID',
+                      'data_filename',
                       'theme',
                       'encoder_name',
                       'methode',
@@ -264,7 +267,7 @@ def main():
 
                 # Export des résultats bruts
                 with open(raw_results_filename, 'a+') as f:
-                    f.write(f"{ID_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                    f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
             # Création résultats condensés
             AUC_condensed = sum(AUC_list) / float(len(AUC_list))
@@ -274,7 +277,7 @@ def main():
             # Export des résultats condensés
 
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ID_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
+                f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
     print("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
