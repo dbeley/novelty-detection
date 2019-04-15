@@ -6,6 +6,7 @@ import logging
 import time
 import sys
 import os
+import uuid
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
@@ -13,6 +14,9 @@ from encoders.sent2vec import sent2vec_model
 from encoders.word2vec import word2vec_model, word2vec_mean_model
 from evaluation.score import calcul_seuil, calcul_score
 from evaluation.measures import mat_conf, all_measures
+import tensorflow as tf
+import tensorflow_hub as hub
+
 
 pd.np.set_printoptions(threshold=sys.maxsize)
 logger = logging.getLogger()
@@ -86,7 +90,6 @@ def main():
         logger.debug("Utilisation du jeu de données datapapers.csv")
         try:
             data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
-            # data.columns = ['id', 'conf', 'title', 'author', 'year', 'abstract', 'eq', 'conf_short', 'theme']
             data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
         except Exception as e:
             logger.error(str(e))
@@ -117,8 +120,8 @@ def main():
         logger.error(f"méthode {method} non implémentée. Choix = {SUPPORTED_METHOD}")
         exit()
 
-    # à décommenter pour créer l'entête
-    variables_list = ['theme',
+    variables_list = ['ID',
+                      'theme',
                       'encoder_name',
                       'methode',
                       'novelty class',
@@ -152,9 +155,6 @@ def main():
         with open(condensed_results_filename, 'a+') as f:
             f.write(f"{';'.join(variables_list)}\n")
 
-    import tensorflow as tf
-    import tensorflow_hub as hub
-
     # Boucle sur les encodeurs sélectionnés
     for single_encoder in encoder:
         print(f"Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}")
@@ -179,6 +179,9 @@ def main():
             size_historic = exp[0]
             size_context = exp[1]
             size_novelty = exp[2]
+
+            # ID du test
+            ID_test = uuid.uuid4()
 
             # Liste des résultats
             AUC_list = []
@@ -253,7 +256,7 @@ def main():
 
                 # Export des résultats bruts
                 with open(raw_results_filename, 'a+') as f:
-                    f.write(f"{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                    f.write(f"{ID_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
                 # Ajout des résultats dans une liste
                 AUC_list.append(AUC)
@@ -267,7 +270,7 @@ def main():
             # Export des résultats condensés
 
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
+                f.write(f"{ID_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
     print("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
