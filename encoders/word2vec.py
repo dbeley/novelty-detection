@@ -26,13 +26,3 @@ def word2vec_mean_model(model, data):
         vectors = np.array(vectors).astype(np.float)
         mean_vectors.append(vectors.mean(axis=0))
     return mean_vectors
-# 
-# def get_fasttext_embeddings_raw(fname, mots):
-#     fin = io.open(fname, 'r', encoding='utf-8', newline='\n', errors='ignore')
-#     n, d = map(int, fin.readline().split())
-#     for line in fin:
-#         tokens = line.rstrip().split(' ')
-#         if tokens[0] in mots:
-#             logger.debug(f"{tokens[0]} trouvé")
-#             yield tokens[1:]
-

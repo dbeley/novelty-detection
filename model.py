@@ -18,6 +18,7 @@ from evaluation.measures import mat_conf, all_measures
 # import tensorflow_hub as hub
 # à décommenter pour USE
 from encoders.universal_sentence_encoder import hub_module, get_USE_embeddings
+from gensim.models import KeyedVectors
 
 
 pd.np.set_printoptions(threshold=sys.maxsize)
@@ -28,7 +29,7 @@ logger = logging.getLogger()
 # handler.setFormatter(formatter)
 # logger.addHandler(handler)
 
-Temps_debut = time.time()
+temps_debut = time.time()
 
 # Variables globales
 DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
@@ -191,7 +192,8 @@ def main():
             # encoder_model = hub.Module(module_url)
             encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
-            encoder_model = word2vec_model(vec_path=PATH_CRAWL)
+            # encoder_model = word2vec_model(vec_path=PATH_CRAWL)
+            encoder_model = KeyedVectors.load_word2vec_format(PATH_CRAWL)
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
@@ -277,7 +279,7 @@ def main():
                 AUC_list.append(AUC)
                 matrice_confusion_list.append(matrice_confusion)
                 mesures_list.append(mesures)
-                iteration_time_list.append(iteration_time)
+                iteration_time_list.append(float(iteration_time))
 
                 # Arrondi des résultats numériques avant export
                 AUC = round(AUC, 2)
