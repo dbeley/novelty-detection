@@ -248,6 +248,11 @@ def main():
                 iteration_time = "%.2f" % (time.time() - iteration_begin)
                 logger.debug(f"temps itération = {iteration_time}")
 
+                # Ajout des résultats dans une liste
+                AUC_list.append(AUC)
+                matrice_confusion_list.append(matrice_confusion)
+                mesures_list.append(mesures)
+
                 # Arrondi des résultats numériques avant export
                 AUC = round(AUC, 2)
                 # iteration_time = round(iteration_time, 2)
@@ -258,14 +263,10 @@ def main():
                 with open(raw_results_filename, 'a+') as f:
                     f.write(f"{ID_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
-                # Ajout des résultats dans une liste
-                AUC_list.append(AUC)
-                matrice_confusion_list.append(matrice_confusion)
-                mesures_list.append(mesures)
             # Création résultats condensés
             AUC_condensed = sum(AUC_list) / float(len(AUC_list))
-            matrice_confusion_condensed = np.mean(np.array(matrice_confusion_list), axis=0)
-            mesures_condensed = np.mean(np.array(mesures_list), axis=0)
+            matrice_confusion_condensed = np.round(np.mean(np.array(matrice_confusion_list), axis=0), 2)
+            mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
 
             # Export des résultats condensés
 
