@@ -138,10 +138,19 @@ def main():
                       'fscore',
                       'gmean'
                       ]
+    raw_results_filename = "Exports/Résultats_bruts.csv"
+    condensed_results_filename = "Exports/Résultats_condensés.csv"
 
-    with open(f"Exports/Résultats.csv", 'a+') as f:
-        # f.write(f"theme;encoder_name;methode;size_historic;size_context;size_novelty;iteration;faux positifs;faux négatifs;vrais positifs;vrais négatifs;AUC;temps\n")
-        f.write(f"{';'.join(variables_list)}\n")
+    # si le fichier n'existe pas, on le crée et y insère l'entête
+    if not os.path.isfile(raw_results_filename):
+        logger.debug(f"Création du fichier {raw_results_filename}")
+        with open(raw_results_filename, 'a+') as f:
+            f.write(f"{';'.join(variables_list)}\n")
+
+    if not os.path.isfile(condensed_results_filename):
+        logger.debug(f"Création du fichier {condensed_results_filename}")
+        with open(condensed_results_filename, 'a+') as f:
+            f.write(f"{';'.join(variables_list)}\n")
 
     import tensorflow as tf
     import tensorflow_hub as hub
@@ -166,9 +175,16 @@ def main():
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
+            # Récupération des paramètres d'échantillons
             size_historic = exp[0]
             size_context = exp[1]
             size_novelty = exp[2]
+
+            # Liste des résultats
+            AUC_list = []
+            matrice_confusion_list = []
+            mesures_list = []
+
             # Boucle d'itération
             for iteration in range(0, ITERATION_NB):
                 iteration_begin = time.time()
@@ -235,9 +251,23 @@ def main():
                 # matrice_confusion = [round(x, 2) for x in matrice_confusion]
                 mesures = [round(x, 2) for x in mesures]
 
-                # Export des résultats
-                with open(f"Exports/Résultats.csv", 'a+') as f:
+                # Export des résultats bruts
+                with open(raw_results_filename, 'a+') as f:
                     f.write(f"{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+
+                # Ajout des résultats dans une liste
+                AUC_list.append(AUC)
+                matrice_confusion_list.append(matrice_confusion)
+                mesures_list.append(mesures)
+            # Création résultats condensés
+            AUC_condensed = sum(AUC_list) / float(len(AUC_list))
+            matrice_confusion_condensed = np.mean(np.array(matrice_confusion_list), axis=0)
+            mesures_condensed = np.mean(np.array(mesures_list), axis=0)
+
+            # Export des résultats condensés
+
+            with open(condensed_results_filename, 'a+') as f:
+                f.write(f"{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
     print("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
