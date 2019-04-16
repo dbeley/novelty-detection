@@ -75,7 +75,6 @@ def main():
     nltk.download("stopwords")
     nltk.download("wordnet")
 
-
     logger.info("Chargement des stopwords")
     en_stopw = [str(x) for x in stopwords.words('english')]
     logger.info("Nettoyage des données")
@@ -93,7 +92,6 @@ def main():
             idx.append(i)
     data.drop(data.index[idx])
     data.index = range(len(data.index))
-    return data
 
     if file == 'datapapers':
         logger.info("Export du fichier datapapers_clean.csv")

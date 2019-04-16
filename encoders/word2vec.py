@@ -1,18 +1,7 @@
+import numpy as np
 import logging
-# from gensim.models import KeyedVectors
 
 logger = logging.getLogger(__name__)
-
-
-# Non utilisé
-# class word2vec_model(KeyedVectors):
-#     def __init__(self, vec_path):
-#         logger.debug("Chargement du modèle word2vec")
-#         # KeyedVectors.__init__(self)
-#         KeyedVectors.load_word2vec_format(vec_path)
-#
-#     def get_embeddings(self, text):
-#         return self[text]
 
 
 def word2vec_mean_model(model, data):
@@ -20,18 +9,27 @@ def word2vec_mean_model(model, data):
     logger.debug("fonction word2vec_mean_model")
     # Boucle sur les documents
     for doc in data:
-        logger.debug(f"doc.split : {doc.split()}")
+        # logger.debug(f"doc.split : {doc.split()}")
         vectors = []
         # Boucle sur les mots
         for word in doc.split():
             try:
                 vectors.append(model[str(word)].tolist())
             except Exception as e:
-                logger.warning(f"{e}")
+                # logger.warning(f"{e}")
                 with open("Exports/word2vec_not_found.csv", 'a+') as f:
                     f.write(f"{word}\n")
         # Calcul du vecteur moyen
-        mean_vec = [float(sum(col))/len(col) for col in zip(*vectors)]
+        try:
+            mean_vec = [float(sum(col))/len(col) for col in zip(*vectors)]
+            # logger.debug(f"mean_vec len : {len(mean_vec)}")
+            # logger.debug(f"mean_vec shape : {np.array(mean_vec).shape}")
+        except Exception as e:
+            logger.error(f"{str(e)} - mean_vec : {mean_vec}")
+        if len(mean_vec) == 0 or mean_vec is None:
+            logger.warning("Moyenne incalculable, vecteur de zéros")
+            mean_vec = np.zeros(shape=(300,))
         # Ajout du vecteur moyen à la liste des vecteurs moyens
         mean_vectors.append(mean_vec)
+        logger.debug(f"mean_vectors shape : {np.array(mean_vectors).shape}")
     return mean_vectors

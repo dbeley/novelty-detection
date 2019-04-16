@@ -30,14 +30,15 @@ PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.tx
 # sent2vec
 PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
 # fasttext
-PATH_CRAWL = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
+# PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
+PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
 SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec", "fasttext"]
 SUPPORTED_METHOD = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
-SAMPLES_LIST = [# [2000, 300, 50],
+SAMPLES_LIST = [[2000, 300, 50],
                 # [50, 20, 10],
-                [200, 50, 20],
+                # [200, 50, 20],
                 # [2000, 300, 10],
                 # [2000, 300, 150],
                 # [2000, 500, 10],
@@ -196,8 +197,8 @@ def main():
             # # Import the Universal Sentence Encoder's TF Hub module
             encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
-            logger.info(f"Chargement du modèle fasstext ({PATH_CRAWL}) (~15 minutes)")
-            encoder_model = KeyedVectors.load_word2vec_format(PATH_CRAWL)
+            logger.info(f"Chargement du modèle fasstext ({PATH_FASTTEXT}) (~15 minutes)")
+            encoder_model = KeyedVectors.load_word2vec_format(PATH_FASTTEXT)
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
@@ -235,13 +236,15 @@ def main():
                     vector_historic = get_USE_embeddings(encoder_model, list(data_historic.abstract.astype(str)))
                     vector_context = get_USE_embeddings(encoder_model, list(data_context.abstract.astype(str)))
                 elif single_encoder == "fasttext":
+                    logger.debug("Création vector_historic")
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
+                    logger.debug("Création vector_context")
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
                 # Export des embeddings pour débogage
-                with open(f"Exports/vector_historic_{single_encoder}", 'w') as f:
+                with open(f"Exports/vector_historic_{single_encoder}.csv", 'w') as f:
                     for x in vector_historic:
                         f.write(f"{x}\n")
-                with open(f"Exports/vector_context_{single_encoder}", 'w') as f:
+                with open(f"Exports/vector_context_{single_encoder}.csv", 'w') as f:
                     for x in vector_context:
                         f.write(f"{x}\n")
 
@@ -254,12 +257,14 @@ def main():
                     pred = [1 if x > seuil else 0 for x in score]
                 elif method == "svm":
                     logger.debug("Classif avec svm")
-                    logger.debug(f"vector_historic : {vector_historic}")
+                    # logger.debug(f"vector_historic : {vector_historic}")
                     logger.debug(f"vector_historic len : {len(vector_historic)}")
-                    logger.debug(f"vector_historic type : {type(vector_historic)}")
-                    logger.debug(f"vector_context : {vector_context}")
+                    logger.debug(f"vector_historic shape : {np.array(vector_historic).shape}")
+                    # logger.debug(f"vector_historic type : {type(vector_historic)}")
+                    # logger.debug(f"vector_context : {vector_context}")
                     logger.debug(f"vector_context len : {len(vector_context)}")
-                    logger.debug(f"vector_context type : {type(vector_context)}")
+                    logger.debug(f"vector_context shape : {np.array(vector_context).shape}")
+                    # logger.debug(f"vector_context type : {type(vector_context)}")
                     mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
                                       cache_size=200, verbose=False, max_iter=-1, random_state=None)
                     logger.debug(f"mod.fit")
@@ -267,8 +272,6 @@ def main():
                     logger.debug(f"mod.predict")
                     y_pred = mod.predict(vector_context)
                     logger.debug(f"y_pred : {y_pred}")
-                    logger.debug(f"y_pred type : {type(y_pred)}")
-                    # y_pred = list(y_pred)
                     logger.debug(f"y_pred type : {type(y_pred)}")
 
                     pred = [0 if x == 1 else 1 for x in y_pred]
