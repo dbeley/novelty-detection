@@ -45,12 +45,13 @@ def main():
     args = parse_args()
     file = str(args.file)
 
-    print("Chargement des données")
     if file == 'datapapers':
+        logger.info("Chargement du fichier datapapers.csv")
         data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
         data = data[['abstract', 'theme']]
         data_text = data.abstract
     elif file == 'nytdata':
+        logger.info("Chargement du fichier nytdata")
         data = pd.read_csv(NYTDATA, sep="\t", encoding="utf-8")
         data = data[['texts', 'dates', 'principal_classifier']]
         data_text = data.texts.astype(str)
@@ -69,20 +70,20 @@ def main():
             if exc.errno != errno.EEXIST:
                 raise
 
-    print("Téléchargement fichiers nltk")
+    logger.info("Téléchargement fichiers nltk")
     nltk.download("punkt")
     nltk.download("stopwords")
     nltk.download("wordnet")
 
 
-    print("Chargement des stopwords")
+    logger.info("Chargement des stopwords")
     en_stopw = [str(x) for x in stopwords.words('english')]
-    print("Nettoyage des données")
+    logger.info("Nettoyage des données")
     logger.debug("Mise en minuscule")
     data_text = data_text.apply(lambda x: x.lower())
     logger.debug("Nettoyage")
     data_text = data_text.apply(lambda x: petit_nettoyage(x, True, False, 3, en_stopw))
-    print("Suppression des petites lignes")
+    logger.info("Suppression des petites lignes")
 
     """ Suppression des petites lignes """
     idx = []
@@ -95,17 +96,19 @@ def main():
     return data
 
     if file == 'datapapers':
+        logger.info("Export du fichier datapapers_clean.csv")
         data.abstract = data_text
         vocab = data_text.str.split()
         vocab.to_csv("Exports/vocabulary.csv")
         data.to_csv("Exports/datapapers_clean.csv")
     elif file == 'nytdata':
+        logger.info("Export du fichier nytdata_clean.csv")
         data.texts = data_text
         vocab = data_text.str.split()
         vocab.to_csv("Exports/vocabulary.csv")
         data.to_csv("Exports/nytdata_clean.csv")
 
-    print("Runtime : %.2f seconds" % (time.time() - temps_debut))
+    logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
 
 def parse_args():

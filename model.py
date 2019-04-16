@@ -35,8 +35,9 @@ SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec", "fasttext"]
 SUPPORTED_METHOD = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
-SAMPLES_LIST = [[2000, 300, 50],
+SAMPLES_LIST = [# [2000, 300, 50],
                 # [50, 20, 10],
+                [200, 50, 20],
                 # [2000, 300, 10],
                 # [2000, 300, 150],
                 # [2000, 500, 10],
@@ -85,14 +86,14 @@ def main():
     # Work around TensorFlow's absl.logging depencency which alters the
     # default Python logging output behavior when present.
     if 'absl.logging' in sys.modules:
-        print("Tentative de correction de la verbosité des logs")
+        logger.info("Tentative de correction de la verbosité des logs")
         import absl.logging
         if args.loglevel == 20:
-            print("Logging : info")
+            logger.info("Logging : info")
             absl.logging.set_verbosity('info')
             absl.logging.set_stderrthreshold('info')
         if args.loglevel == 10:
-            print("Logging : debug")
+            logger.info("Logging : debug")
             absl.logging.set_verbosity('debug')
             absl.logging.set_stderrthreshold('debug')
         # and any other apis you want, if you want
@@ -128,9 +129,7 @@ def main():
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
-    # if encoder[0] not in SUPPORTED_ENCODER and all_encoders is None:
-    #     logger.error(f"encoder {encoder} non implémenté. Choix = {SUPPORTED_ENCODER}")
-    #     exit()
+
     if encoder[0] in SUPPORTED_ENCODER and not all_encoders:
         logger.debug(f"Encodeur {encoder[0]} sélectionné.")
     elif all_encoders:
@@ -183,7 +182,7 @@ def main():
 
     # Boucle sur les encodeurs sélectionnés
     for single_encoder in encoder:
-        print(f"Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}")
+        logger.info(f"Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}")
 
         # Chargement de l'encodeur
         logger.debug("Chargement de l'encoder")
@@ -197,7 +196,7 @@ def main():
             # # Import the Universal Sentence Encoder's TF Hub module
             encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
-            print(f"Chargement du modèle fasstext ({PATH_CRAWL}) (~15 minutes)")
+            logger.info(f"Chargement du modèle fasstext ({PATH_CRAWL}) (~15 minutes)")
             encoder_model = KeyedVectors.load_word2vec_format(PATH_CRAWL)
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
@@ -219,7 +218,7 @@ def main():
             # Boucle d'itération
             for iteration in range(0, ITERATION_NB):
                 iteration_begin = time.time()
-                print(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+                logger.info(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
                 data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
 
                 # Export des jeux de données pour débogage
@@ -238,6 +237,13 @@ def main():
                 elif single_encoder == "fasttext":
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
+                # Export des embeddings pour débogage
+                with open(f"Exports/vector_historic_{single_encoder}", 'w') as f:
+                    for x in vector_historic:
+                        f.write(f"{x}\n")
+                with open(f"Exports/vector_context_{single_encoder}", 'w') as f:
+                    for x in vector_context:
+                        f.write(f"{x}\n")
 
                 # classification
                 if method == "score":
@@ -276,7 +282,7 @@ def main():
                 obs2 = [-1 if x == 1 else 1 for x in obs]
 
                 matrice_confusion = mat_conf(obs, pred)
-                mesures = all_measures(obs, pred)
+                mesures = all_measures(matrice_confusion, obs, pred)
                 logger.debug(f"matrice : {matrice_confusion}")
                 logger.debug(f"mesures : {mesures}")
 
@@ -313,7 +319,7 @@ def main():
             with open(condensed_results_filename, 'a+') as f:
                 f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
-    print("Runtime : %.2f seconds" % (time.time() - temps_debut))
+    logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
 
 
 def parse_args():

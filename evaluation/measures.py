@@ -16,15 +16,14 @@ def mat_conf(OBS, PRED):
     return [fp, fn, vp, vn]
 
 
-def all_measures(OBS, PRED):
+def all_measures(mat_conf, OBS, PRED):
     
     """ Retourne le calcul de la précison, du rappel, de l'accuracy, de la f-mesure, de la g-mean mesure """
     
-    mat = mat_conf(OBS, PRED)
-    fp = mat[0]
-    fn = mat[1]
-    vp = mat[2]
-    vn = mat[3]
+    fp = mat_conf[0]
+    fn = mat_conf[1]
+    vp = mat_conf[2]
+    vn = mat_conf[3]
 
     # precision
     precision = 0
