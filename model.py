@@ -36,6 +36,7 @@ SUPPORTED_METHOD = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 50],
+                # [50, 20, 10],
                 # [2000, 300, 10],
                 # [2000, 300, 150],
                 # [2000, 500, 10],
@@ -99,6 +100,8 @@ def main():
     # parsage des arguments
     without_preprocessing = args.without_preprocessing
     theme = args.novelty
+
+    # chargement du jeu de données
 
     # chargement des données
     if without_preprocessing:
@@ -245,10 +248,23 @@ def main():
                     pred = [1 if x > seuil else 0 for x in score]
                 elif method == "svm":
                     logger.debug("Classif avec svm")
+                    logger.debug(f"vector_historic : {vector_historic}")
+                    logger.debug(f"vector_historic len : {len(vector_historic)}")
+                    logger.debug(f"vector_historic type : {type(vector_historic)}")
+                    logger.debug(f"vector_context : {vector_context}")
+                    logger.debug(f"vector_context len : {len(vector_context)}")
+                    logger.debug(f"vector_context type : {type(vector_context)}")
                     mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
                                       cache_size=200, verbose=False, max_iter=-1, random_state=None)
+                    logger.debug(f"mod.fit")
                     mod.fit(vector_historic)
+                    logger.debug(f"mod.predict")
                     y_pred = mod.predict(vector_context)
+                    logger.debug(f"y_pred : {y_pred}")
+                    logger.debug(f"y_pred type : {type(y_pred)}")
+                    # y_pred = list(y_pred)
+                    logger.debug(f"y_pred type : {type(y_pred)}")
+
                     pred = [0 if x == 1 else 1 for x in y_pred]
 
                     score = mod.decision_function(vector_context)

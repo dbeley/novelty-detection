@@ -25,7 +25,7 @@ def word2vec_mean_model(model, data):
         # Boucle sur les mots
         for word in doc.split():
             try:
-                vectors.append(model[word].tolist())
+                vectors.append(model[str(word)].tolist())
             except Exception as e:
                 logger.warning(f"{e}")
                 with open("Exports/word2vec_not_found.csv", 'a+') as f:
