@@ -12,7 +12,12 @@ def mat_conf(OBS, PRED):
     vp = sum([1 if obs == 1 and pred == 1 else 0 for obs, pred in zip(OBS, PRED)])
     vn = sum([1 if obs == 0 and pred == 0 else 0 for obs, pred in zip(OBS, PRED)])
 
-    #return fp, fn, vp, vn
+    logger.debug(f"""
+    Faux positifs : {fp}
+    Faux négatifs : {fn}
+    Vrais positifs : {vp}
+    Vrais négatifs : {vn}""")
+
     return [fp, fn, vp, vn]
 
 

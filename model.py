@@ -7,6 +7,7 @@ import time
 import sys
 import os
 import uuid
+from tqdm import tqdm
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
@@ -23,7 +24,6 @@ logger = logging.getLogger()
 temps_debut = time.time()
 
 # Variables globales
-DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 # infersent
 PATH_INFERSENT_PKL = os.path.expanduser("~/Documents/Données/infersent2.pkl")
 PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.txt")
@@ -32,33 +32,19 @@ PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigra
 # fasttext
 # PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
 PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
-SUPPORTED_ENCODER = ["infersent", "USE", "sent2vec", "fasttext"]
-SUPPORTED_METHOD = ["score", "svm"]
-ITERATION_NB = 50
+SUPPORTED_DATASETS = ['datapapers', 'nytdata']
+PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
+PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
+SUPPORTED_ENCODERS = ["infersent", "USE", "sent2vec", "fasttext"]
+SUPPORTED_METHODS = ["score", "svm"]
+ITERATION_NB = 5
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 50],
-                # [50, 20, 10],
-                # [200, 50, 20],
-                # [2000, 300, 10],
-                # [2000, 300, 150],
-                # [2000, 500, 10],
-                # [2000, 500, 50],
-                # [2000, 500, 100],
-                # [2000, 500, 250],
-                # [5000, 500, 100],
-                # [5000, 500, 20]
-                # [5000, 500, 100],
-                # [5000, 500, 30],
-                # [10000, 1000, 200],
-                # [2000, 300, 200],
-                # [2000, 300, 250],
-                # [2000, 300, 20],
-                # [4000, 600, 300],
-                # [4000, 600, 400],
-                # [10000, 300, 50],
-                # [10000, 300, 150],
-                # [10000, 600, 50],
-                # [10000, 600, 150]
+                [2000, 300, 150],
+                [2000, 300, 280],
+                [5000, 300, 50],
+                [5000, 300, 150],
+                [5000, 300, 280],
                 ]
 
 
@@ -100,49 +86,82 @@ def main():
         # and any other apis you want, if you want
 
     # parsage des arguments
+    dataset = args.dataset
     without_preprocessing = args.without_preprocessing
     theme = args.novelty
 
     # chargement du jeu de données
 
     # chargement des données
-    if without_preprocessing:
-        logger.debug("Utilisation du jeu de données datapapers.csv")
-        data_filename = "datapapers.csv"
-        try:
-            data = pd.read_csv(DATAPAPERS, sep="\t", encoding="utf-8")
-            data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
-        except Exception as e:
-            logger.error(str(e))
-            logger.error("Fichier datapapers_clean.csv non trouvé dans le dossier Exports. Lancez le script prepare.py")
-            exit()
+
+    if dataset == 'datapapers':
+        if without_preprocessing:
+            logger.debug("Utilisation du jeu de données datapapers.csv")
+            data_filename = "datapapers.csv"
+            try:
+                data = pd.read_csv(PATH_DATAPAPERS, sep="\t", encoding="utf-8")
+                data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
+            except Exception as e:
+                logger.error(str(e))
+                logger.error(f"Fichier {data_filename} non trouvé.")
+                exit()
+        else:
+            logger.debug("Utilisation du jeu de données datapapers_clean.csv")
+            data_filename = "datapapers_clean.csv"
+            try:
+                data = pd.read_csv(f'Exports/{data_filename}')
+                data.columns = ['id', 'abstract', 'theme']
+                data = data.drop(['id'], axis=1)
+            except Exception as e:
+                logger.error(str(e))
+                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
+                exit()
+    elif dataset == 'nytdata':
+        if without_preprocessing:
+            logger.debug("Utilisation du jeu de données data_big_category_long.csv")
+            data_filename = "nytdata.csv"
+            try:
+                data = pd.read_csv(PATH_NYTDATA, sep="\t", encoding="utf-8")
+                data = data.drop(['week', 'titles'], axis=1)
+                data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
+            except Exception as e:
+                logger.error(str(e))
+                logger.error(f"Fichier {data_filename} non trouvé.")
+                exit()
+        else:
+            logger.debug("Utilisation du jeu de données nytdata_clean.csv")
+            data_filename = "nytdata_clean.csv"
+            try:
+                data = pd.read_csv(f'Exports/{data_filename}')
+                # data = data.drop(['week', 'second_classifier', 'titles', 'third_classifier'], axis=1)
+                data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
+            except Exception as e:
+                logger.error(str(e))
+                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
+                exit()
+    elif dataset is None:
+        logger.error(f"Entrez un jeu de données avec l'argument -d/--dataset parmi {SUPPORTED_DATASETS}.")
+        exit()
     else:
-        logger.debug("Utilisation du jeu de données datapapers_clean.csv")
-        data_filename = "datapapers_clean.csv"
-        try:
-            data = pd.read_csv('Exports/datapapers_clean.csv')
-            data.columns = ['id', 'abstract', 'theme']
-            data = data.drop(['id'], axis=1)
-        except Exception as e:
-            logger.error(str(e))
-            logger.error("Fichier datapapers_clean.csv non trouvé dans le dossier Exports. Lancez le script prepare.py")
-            exit()
+        logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASET}")
+        exit()
+
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
 
-    if encoder[0] in SUPPORTED_ENCODER and not all_encoders:
+    if encoder[0] in SUPPORTED_ENCODERS and not all_encoders:
         logger.debug(f"Encodeur {encoder[0]} sélectionné.")
     elif all_encoders:
         logger.debug("Option all_encoders sélectionnée. Sélection de tous les encodeurs")
-        encoder = SUPPORTED_ENCODER
+        encoder = SUPPORTED_ENCODERS
     else:
         logger.error("Utiliser -e ou -a pour sélectionner un ou plusieurs encodeurs. -h pour plus d'informations.")
         exit()
 
     method = args.method
-    if method not in SUPPORTED_METHOD:
-        logger.error(f"Méthode {method} non implémentée. Choix = {SUPPORTED_METHOD}")
+    if method not in SUPPORTED_METHODS:
+        logger.error(f"Méthode {method} non implémentée. Choix = {SUPPORTED_METHODS}")
         exit()
 
     variables_list = ['ID',
@@ -183,7 +202,6 @@ def main():
 
     # Boucle sur les encodeurs sélectionnés
     for single_encoder in encoder:
-        logger.info(f"Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}")
 
         # Chargement de l'encodeur
         logger.debug("Chargement de l'encoder")
@@ -216,10 +234,13 @@ def main():
             mesures_list = []
             iteration_time_list = []
 
+            # Résumé du test
+            logger.info(f"Dataset = {data_filename}, Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+
             # Boucle d'itération
-            for iteration in range(0, ITERATION_NB):
+            for iteration in tqdm(range(0, ITERATION_NB)):
                 iteration_begin = time.time()
-                logger.info(f"iteration : {iteration}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+                logger.debug(f"iteration : {iteration}")
                 data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
 
                 # Export des jeux de données pour débogage
@@ -236,9 +257,9 @@ def main():
                     vector_historic = get_USE_embeddings(encoder_model, list(data_historic.abstract.astype(str)))
                     vector_context = get_USE_embeddings(encoder_model, list(data_context.abstract.astype(str)))
                 elif single_encoder == "fasttext":
-                    logger.debug("Création vector_historic")
+                    # logger.debug("Création vector_historic")
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
-                    logger.debug("Création vector_context")
+                    # logger.debug("Création vector_context")
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
                 # Export des embeddings pour débogage
                 with open(f"Exports/vector_historic_{single_encoder}.csv", 'w') as f:
@@ -257,22 +278,10 @@ def main():
                     pred = [1 if x > seuil else 0 for x in score]
                 elif method == "svm":
                     logger.debug("Classif avec svm")
-                    # logger.debug(f"vector_historic : {vector_historic}")
-                    logger.debug(f"vector_historic len : {len(vector_historic)}")
-                    logger.debug(f"vector_historic shape : {np.array(vector_historic).shape}")
-                    # logger.debug(f"vector_historic type : {type(vector_historic)}")
-                    # logger.debug(f"vector_context : {vector_context}")
-                    logger.debug(f"vector_context len : {len(vector_context)}")
-                    logger.debug(f"vector_context shape : {np.array(vector_context).shape}")
-                    # logger.debug(f"vector_context type : {type(vector_context)}")
                     mod = OneClassSVM(kernel='linear', degree=3, gamma=0.5, coef0=0.5, tol=0.001, nu=0.2, shrinking=True,
                                       cache_size=200, verbose=False, max_iter=-1, random_state=None)
-                    logger.debug(f"mod.fit")
                     mod.fit(vector_historic)
-                    logger.debug(f"mod.predict")
                     y_pred = mod.predict(vector_context)
-                    logger.debug(f"y_pred : {y_pred}")
-                    logger.debug(f"y_pred type : {type(y_pred)}")
 
                     pred = [0 if x == 1 else 1 for x in y_pred]
 
@@ -285,13 +294,12 @@ def main():
                 obs2 = [-1 if x == 1 else 1 for x in obs]
 
                 matrice_confusion = mat_conf(obs, pred)
-                mesures = all_measures(matrice_confusion, obs, pred)
                 logger.debug(f"matrice : {matrice_confusion}")
-                logger.debug(f"mesures : {mesures}")
+                mesures = all_measures(matrice_confusion, obs, pred)
 
                 AUC = roc_auc_score(obs2, score)
 
-                logger.debug(f"AUC : .{AUC}")
+                logger.debug(f"AUC : {AUC}")
                 iteration_time = "%.2f" % (time.time() - iteration_begin)
                 logger.debug(f"temps itération = {iteration_time}")
 
@@ -308,6 +316,7 @@ def main():
                 mesures = [round(x, 2) for x in mesures]
 
                 # Export des résultats bruts
+                logger.debug("Exports des résultats bruts")
                 with open(raw_results_filename, 'a+') as f:
                     f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
@@ -319,10 +328,11 @@ def main():
 
             # Export des résultats condensés
 
+            logger.debug("Exports des résultats condensés")
             with open(condensed_results_filename, 'a+') as f:
                 f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
-    logger.info("Runtime : %.2f seconds" % (time.time() - temps_debut))
+    logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
 
 def parse_args():
@@ -331,7 +341,8 @@ def parse_args():
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
     parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE ou fasttext)", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
-    parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données initial, sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
+    parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données sélectionné, mais sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
+    parser.add_argument('-d', '--dataset', help="Jeu de données à utiliser (datapapers ou nytdata)", type=str)
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')
     parser.set_defaults(all_encoders=False, without_preprocessing=False)
     args = parser.parse_args()

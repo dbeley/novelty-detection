@@ -53,7 +53,7 @@ def main():
     elif file == 'nytdata':
         logger.info("Chargement du fichier nytdata")
         data = pd.read_csv(NYTDATA, sep="\t", encoding="utf-8")
-        data = data[['texts', 'dates', 'principal_classifier']]
+        data = data[['texts', 'dates', 'principal_classifier', 'second_classifier', 'third_classifier']]
         data_text = data.texts.astype(str)
     elif file is None:
         logger.error(f"Entrez un jeu de données avec l'argument -f/--file parmi {SUPPORTED_DATASETS}.")
