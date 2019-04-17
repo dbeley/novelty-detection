@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class hub_module(hub.Module):
     def __init__(self, url):
-        logger.debug("Création modèle hub")
+        logger.debug("Création modèle hub Universal Sentence Encoding")
         hub.Module.__init__(self, url)
 
 

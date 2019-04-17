@@ -35,7 +35,7 @@ PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
 SUPPORTED_DATASETS = ['datapapers', 'nytdata']
 PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
-SUPPORTED_ENCODERS = ["infersent", "USE", "sent2vec", "fasttext"]
+SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
 ITERATION_NB = 5
 #       historic, context, novelty
@@ -45,6 +45,10 @@ SAMPLES_LIST = [[2000, 300, 50],
                 [5000, 300, 50],
                 [5000, 300, 150],
                 [5000, 300, 280],
+                [2000, 1000, 50],
+                [2000, 1000, 100],
+                [2000, 1000, 250],
+                [2000, 1000, 500],
                 ]
 
 
