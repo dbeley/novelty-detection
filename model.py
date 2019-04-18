@@ -1,3 +1,4 @@
+import datetime
 import pandas as pd
 import numpy as np
 import random
@@ -28,16 +29,18 @@ temps_debut = time.time()
 PATH_INFERSENT_PKL = os.path.expanduser("~/Documents/Données/infersent2.pkl")
 PATH_INFERSENT_W2V = os.path.expanduser("~/Documents/Données/glove.840B.300d.txt")
 # sent2vec
-PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
+# PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
+PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/datapapers_model.bin")
 # fasttext
 # PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
 PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
+# PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/datapapers_fasttext_model.vec")
 SUPPORTED_DATASETS = ['datapapers', 'nytdata']
 PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
-ITERATION_NB = 5
+ITERATION_NB = 50
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 50],
                 [2000, 300, 150],
@@ -170,6 +173,7 @@ def main():
 
     variables_list = ['ID',
                       'data_filename',
+                      'date test',
                       'theme',
                       'encoder_name',
                       'methode',
@@ -231,6 +235,8 @@ def main():
 
             # ID du test
             ID_test = uuid.uuid4()
+            # Heure du test
+            heure_test = datetime.datetime.now().strftime("%Y/%m/%d %H:%M")
 
             # Liste des résultats
             AUC_list = []
@@ -266,12 +272,12 @@ def main():
                     # logger.debug("Création vector_context")
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
                 # Export des embeddings pour débogage
-                with open(f"Exports/vector_historic_{single_encoder}.csv", 'w') as f:
-                    for x in vector_historic:
-                        f.write(f"{x}\n")
-                with open(f"Exports/vector_context_{single_encoder}.csv", 'w') as f:
-                    for x in vector_context:
-                        f.write(f"{x}\n")
+                # with open(f"Exports/vector_historic_{single_encoder}.csv", 'w') as f:
+                #     for x in vector_historic:
+                #         f.write(f"{x}\n")
+                # with open(f"Exports/vector_context_{single_encoder}.csv", 'w') as f:
+                #     for x in vector_context:
+                #         f.write(f"{x}\n")
 
                 # classification
                 if method == "score":
@@ -334,7 +340,7 @@ def main():
 
             logger.debug("Exports des résultats condensés")
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
+                f.write(f"{ID_test};{data_filename};{heure_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
