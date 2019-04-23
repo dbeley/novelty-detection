@@ -1,3 +1,7 @@
+"""
+Classe infersent
+"""
+
 import logging
 import torch
 from .model_infersent import InferSent

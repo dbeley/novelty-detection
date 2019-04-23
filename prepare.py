@@ -1,3 +1,7 @@
+"""
+Script de préparation et de nettoyage des données
+"""
+
 import pandas as pd
 import nltk
 from nltk.stem import WordNetLemmatizer

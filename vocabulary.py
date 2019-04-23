@@ -1,3 +1,9 @@
+"""
+Script alternatif à prepare.py, exportant le vocabulaire (mots uniques) d'un jeu de données.
+
+Déprécié.
+"""
+
 import string
 import os
 import argparse

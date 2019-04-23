@@ -1,3 +1,7 @@
+"""
+Fonctions de calcul d'indicateurs
+"""
+
 import logging
 from math import sqrt
 
@@ -22,7 +26,6 @@ def mat_conf(OBS, PRED):
 
 
 def all_measures(mat_conf, OBS, PRED):
-    
     """ Retourne le calcul de la précison, du rappel, de l'accuracy, de la f-mesure, de la g-mean mesure """
     
     fp = mat_conf[0]

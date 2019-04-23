@@ -1,3 +1,8 @@
+"""
+Script principal.
+Effectue les tests renseignés par les variables globales et les arguments entrés lors du lancement du script.
+"""
+
 import datetime
 import pandas as pd
 import numpy as np
@@ -96,8 +101,6 @@ def main():
     dataset = args.dataset
     without_preprocessing = args.without_preprocessing
     theme = args.novelty
-
-    # chargement du jeu de données
 
     # chargement des données
 
@@ -271,6 +274,7 @@ def main():
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
                     # logger.debug("Création vector_context")
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
+
                 # Export des embeddings pour débogage
                 # with open(f"Exports/vector_historic_{single_encoder}.csv", 'w') as f:
                 #     for x in vector_historic:
@@ -328,7 +332,7 @@ def main():
                 # Export des résultats bruts
                 logger.debug("Exports des résultats bruts")
                 with open(raw_results_filename, 'a+') as f:
-                    f.write(f"{ID_test};{data_filename};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC };{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                    f.write(f"{ID_test};{data_filename};{heure_test};{theme};{single_encoder};{method};{theme};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC};{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
             # Création résultats condensés
             AUC_condensed = round(sum(AUC_list) / float(len(AUC_list)), 2)
@@ -337,10 +341,9 @@ def main():
             mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
 
             # Export des résultats condensés
-
             logger.debug("Exports des résultats condensés")
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ID_test};{data_filename};{heure_test};{ theme };{ single_encoder };{ method };{theme};{ size_historic };{ size_context };{ size_novelty };{ iteration+1 };{ AUC_condensed };{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
+                f.write(f"{ID_test};{data_filename};{heure_test};{theme};{single_encoder};{method};{theme};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC_condensed};{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 

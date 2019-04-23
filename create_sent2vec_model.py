@@ -1,3 +1,7 @@
+"""
+Script permettant de créer un modèle sent2vec à partir d'un jeu de données.
+"""
+
 import logging
 import argparse
 import pandas as pd

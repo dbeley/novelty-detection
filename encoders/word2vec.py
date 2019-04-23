@@ -1,3 +1,7 @@
+"""
+Classe word2vec
+"""
+
 import numpy as np
 import logging
 

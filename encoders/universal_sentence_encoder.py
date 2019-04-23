@@ -1,3 +1,7 @@
+"""
+Classe USE (Universal Sentence Encoder)
+"""
+
 import numpy as np
 import logging
 import tensorflow as tf
