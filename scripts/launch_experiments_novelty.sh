@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 # Expériences sur toutes les modalités de datapapers
 # À lancer depuis la racine du projet
-printf "database"
+printf "database\n"
 python model.py -m svm -e sent2vec -d datapapers -n database
-printf "datamining"
+printf "datamining\n"
 python model.py -m svm -e sent2vec -d datapapers -n datamining
-printf "medical"
+printf "medical\n"
 python model.py -m svm -e sent2vec -d datapapers -n medical
-printf "theory"
+printf "theory\n"
 python model.py -m svm -e sent2vec -d datapapers -n theory
-printf "visu"
+printf "visu\n"
 python model.py -m svm -e sent2vec -d datapapers -n visu
-printf "database fixed"
+printf "database fixed\n"
 python model.py -m svm -e sent2vec -d datapapers -n database -f
-printf "datamining fixed"
+printf "datamining fixed\n"
 python model.py -m svm -e sent2vec -d datapapers -n datamining -f
-printf "medical fixed"
+printf "medical fixed\n"
 python model.py -m svm -e sent2vec -d datapapers -n medical -f
-printf "theory fixed"
+printf "theory fixed\n"
 python model.py -m svm -e sent2vec -d datapapers -n theory -f
-printf "visu fixed"
+printf "visu fixed\n"
 python model.py -m svm -e sent2vec -d datapapers -n visu -f
