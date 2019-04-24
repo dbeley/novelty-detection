@@ -14,6 +14,7 @@ import sys
 import os
 import uuid
 from tqdm import tqdm
+from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
 from encoders.infersent import infersent_model
@@ -44,24 +45,28 @@ SUPPORTED_DATASETS = ['datapapers', 'nytdata']
 PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent"]
+# SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
 ITERATION_NB = 50
 #       historic, context, novelty
-SAMPLES_LIST = [[2000, 300, 50],
+SAMPLES_LIST = [[2000, 300, 5],
+                [2000, 300, 50],
                 [2000, 300, 150],
                 [2000, 300, 280],
-                [5000, 300, 50],
-                [5000, 300, 150],
-                [5000, 300, 280],
-                [2000, 1000, 50],
-                [2000, 1000, 100],
-                [2000, 1000, 250],
-                [2000, 1000, 500],
+                # [5000, 300, 50],
+                # [5000, 300, 150],
+                # [5000, 300, 280],
+                # [2000, 1000, 50],
+                # [2000, 1000, 100],
+                # [2000, 1000, 250],
+                # [2000, 1000, 500],
                 ]
 
 
-def split_data(data, size_historic, size_context, size_novelty, theme):
+def split_data(data, size_historic, size_context, size_novelty, theme, fix_seed):
     """ Fonction qui genere le contexte et l historique """
+    if fix_seed:
+        random.seed(9583)
     novelty = data[data.theme == str(theme)]
     no_novelty = data[data.theme != str(theme)]
     idx_novelty = list(novelty.index)
@@ -101,9 +106,9 @@ def main():
     dataset = args.dataset
     without_preprocessing = args.without_preprocessing
     theme = args.novelty
+    fix_seed = args.fix_seed
 
     # chargement des données
-
     if dataset == 'datapapers':
         if without_preprocessing:
             logger.debug("Utilisation du jeu de données datapapers.csv")
@@ -174,29 +179,92 @@ def main():
         logger.error(f"Méthode {method} non implémentée. Choix = {SUPPORTED_METHODS}")
         exit()
 
-    variables_list = ['ID',
-                      'data_filename',
-                      'date test',
-                      'theme',
-                      'encoder_name',
-                      'methode',
-                      'novelty class',
-                      'size_historic',
-                      'size_context',
-                      'size_novelty',
-                      'iteration',
-                      'AUC',
-                      'temps',
-                      'faux positifs',
-                      'faux négatifs',
-                      'vrais positifs',
-                      'vrais négatifs',
-                      'précision',
-                      'rappel',
-                      'accuracy',
-                      'fscore',
-                      'gmean'
-                      ]
+    raw_variables_list = ['ID',
+                          'fixed_sample',
+                          'data_filename',
+                          'date test',
+                          'theme',
+                          'encoder_name',
+                          'model_name',
+                          'methode',
+                          'size_historic',
+                          'size_context',
+                          'size_novelty',
+                          'iteration',
+                          'AUC',
+                          'temps',
+                          'faux positifs',
+                          'faux négatifs',
+                          'vrais positifs',
+                          'vrais négatifs',
+                          'précision',
+                          'rappel',
+                          'accuracy',
+                          'fscore',
+                          'gmean'
+                          ]
+
+    condensed_variables_list = ['ID',
+                                'fixed_sample',
+                                'data_filename',
+                                'date test',
+                                'theme',
+                                'encoder_name',
+                                'model_name',
+                                'methode',
+                                'size_historic',
+                                'size_context',
+                                'size_novelty',
+                                'iteration',
+                                'AUC',
+                                'temps',
+                                'moy. faux positifs',
+                                'moy. faux négatifs',
+                                'moy. vrais positifs',
+                                'moy. vrais négatifs',
+                                'moy. précision',
+                                'moy. rappel',
+                                'moy. accuracy',
+                                'moy. fscore',
+                                'moy. gmean',
+                                'std. faux positifs',
+                                'std. faux négatifs',
+                                'std. vrais positifs',
+                                'std. vrais négatifs',
+                                'std. précision',
+                                'std. rappel',
+                                'std. accuracy',
+                                'std. fscore',
+                                'std. gmean',
+                                'q0.25 faux positifs',
+                                'q0.25 faux négatifs',
+                                'q0.25 vrais positifs',
+                                'q0.25 vrais négatifs',
+                                'q0.25 précision',
+                                'q0.25 rappel',
+                                'q0.25 accuracy',
+                                'q0.25 fscore',
+                                'q0.25 gmean',
+                                'q0.5 faux positifs',
+                                'q0.5 faux négatifs',
+                                'q0.5 vrais positifs',
+                                'q0.5 vrais négatifs',
+                                'q0.5 précision',
+                                'q0.5 rappel',
+                                'q0.5 accuracy',
+                                'q0.5 fscore',
+                                'q0.5 gmean',
+                                'q0.75 faux positifs',
+                                'q0.75 faux négatifs',
+                                'q0.75 vrais positifs',
+                                'q0.75 vrais négatifs',
+                                'q0.75 précision',
+                                'q0.75 rappel',
+                                'q0.75 accuracy',
+                                'q0.75 fscore',
+                                'q0.75 gmean'
+                                ]
+
     raw_results_filename = "Exports/Résultats_bruts.csv"
     condensed_results_filename = "Exports/Résultats_condensés.csv"
 
@@ -204,30 +272,39 @@ def main():
     if not os.path.isfile(raw_results_filename):
         logger.debug(f"Création du fichier {raw_results_filename}")
         with open(raw_results_filename, 'a+') as f:
-            f.write(f"{';'.join(variables_list)}\n")
+            f.write(f"{';'.join(raw_variables_list)}\n")
 
     if not os.path.isfile(condensed_results_filename):
         logger.debug(f"Création du fichier {condensed_results_filename}")
         with open(condensed_results_filename, 'a+') as f:
-            f.write(f"{';'.join(variables_list)}\n")
+            f.write(f"{';'.join(condensed_variables_list)}\n")
 
     # Boucle sur les encodeurs sélectionnés
     for single_encoder in encoder:
 
         # Chargement de l'encodeur
         logger.debug("Chargement de l'encoder")
+
+        # Initialisation du nom du modèle
+        model_name = "Non applicable"
         if single_encoder == "infersent":
             encoder_model = infersent_model(pkl_path=PATH_INFERSENT_PKL, w2v_path=PATH_INFERSENT_W2V)
+            model_name = PATH_INFERSENT_W2V
         elif single_encoder == "sent2vec":
             encoder_model = sent2vec_model(model_path=PATH_SENT2VEC_BIN)
+            model_name = PATH_SENT2VEC_BIN
         elif single_encoder == "USE":
             module_url = "https://tfhub.dev/google/universal-sentence-encoder/2" #@param ["https://tfhub.dev/google/universal-sentence-encoder/2", "https://tfhub.dev/google/universal-sentence-encoder-large/3"]
 
             # # Import the Universal Sentence Encoder's TF Hub module
             encoder_model = hub_module(module_url)
         elif single_encoder == "fasttext":
-            logger.info(f"Chargement du modèle fasstext ({PATH_FASTTEXT}) (~15 minutes)")
+            logger.info(f"Chargement du modèle fasttext ({PATH_FASTTEXT}) (~15 minutes)")
             encoder_model = KeyedVectors.load_word2vec_format(PATH_FASTTEXT)
+            model_name = PATH_FASTTEXT
+
+        # Mise en forme du nom du modèle
+        model_name = Path(model_name).stem
 
         # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
@@ -248,13 +325,13 @@ def main():
             iteration_time_list = []
 
             # Résumé du test
-            logger.info(f"Dataset = {data_filename}, Novelty = {theme}, encodeur = {single_encoder}, méthode = {method}, size_historic : {size_historic}, size_context : {size_context}, size_novelty : {size_novelty}")
+            logger.info(f"Paramètres : Données = {data_filename}, Nouveauté = {theme}, Encodeur = {single_encoder}, Méthode = {method}, Historique/Contexte/Nouveauté : {size_historic}/{size_context}/{size_novelty}")
 
             # Boucle d'itération
             for iteration in tqdm(range(0, ITERATION_NB)):
                 iteration_begin = time.time()
                 logger.debug(f"iteration : {iteration}")
-                data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme)
+                data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme, fix_seed=fix_seed)
 
                 # Export des jeux de données pour débogage
                 # data_historic.to_csv('Exports/datapapers_historic.csv')
@@ -332,18 +409,26 @@ def main():
                 # Export des résultats bruts
                 logger.debug("Exports des résultats bruts")
                 with open(raw_results_filename, 'a+') as f:
-                    f.write(f"{ID_test};{data_filename};{heure_test};{theme};{single_encoder};{method};{theme};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC};{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                    f.write(f"{ID_test};{fix_seed};{data_filename};{heure_test};{theme};{single_encoder};{model_name};{method};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC};{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
             # Création résultats condensés
             AUC_condensed = round(sum(AUC_list) / float(len(AUC_list)), 2)
             iteration_time_condensed = round(sum(iteration_time_list) / float(len(iteration_time_list)), 2)
-            matrice_confusion_condensed = np.round(np.mean(np.array(matrice_confusion_list), axis=0), 2)
-            mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
+            mean_matrice_confusion_condensed = np.round(np.mean(np.array(matrice_confusion_list), axis=0), 2)
+            mean_mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
+            std_matrice_confusion_condensed = np.round(np.std(np.array(matrice_confusion_list), axis=0), 2)
+            std_mesures_condensed = np.round(np.std(np.array(mesures_list), axis=0), 2)
+            quantile025_matrice_confusion_condensed = np.round(np.quantile(np.array(matrice_confusion_list), 0.25, axis=0), 2)
+            quantile025_mesures_condensed = np.round(np.quantile(np.array(mesures_list), 0.25, axis=0), 2)
+            med_matrice_confusion_condensed = np.round(np.quantile(np.array(matrice_confusion_list), 0.5, axis=0), 2)
+            med_mesures_condensed = np.round(np.quantile(np.array(mesures_list), 0.5, axis=0), 2)
+            quantile075_matrice_confusion_condensed = np.round(np.quantile(np.array(matrice_confusion_list), 0.75, axis=0), 2)
+            quantile075_mesures_condensed = np.round(np.quantile(np.array(mesures_list), 0.75, axis=0), 2)
 
             # Export des résultats condensés
             logger.debug("Exports des résultats condensés")
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ID_test};{data_filename};{heure_test};{theme};{single_encoder};{method};{theme};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC_condensed};{iteration_time_condensed};{';'.join(map(str, matrice_confusion_condensed))};{';'.join(map(str, mesures_condensed))}\n")
+                f.write(f"{ID_test};{fix_seed};{data_filename};{heure_test};{theme};{single_encoder};{model_name};{method};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC_condensed};{iteration_time_condensed};{';'.join(map(str, mean_matrice_confusion_condensed))};{';'.join(map(str, mean_mesures_condensed))};{';'.join(map(str, std_matrice_confusion_condensed))};{';'.join(map(str, std_mesures_condensed))};{';'.join(map(str, quantile025_matrice_confusion_condensed))};{';'.join(map(str, quantile025_mesures_condensed))};{';'.join(map(str, med_matrice_confusion_condensed))};{';'.join(map(str, med_mesures_condensed))};{';'.join(map(str, quantile075_matrice_confusion_condensed))};{';'.join(map(str, quantile075_mesures_condensed))}\n")
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
@@ -357,7 +442,8 @@ def parse_args():
     parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données sélectionné, mais sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
     parser.add_argument('-d', '--dataset', help="Jeu de données à utiliser (datapapers ou nytdata)", type=str)
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')
-    parser.set_defaults(all_encoders=False, without_preprocessing=False)
+    parser.add_argument('-f', '--fix_seed', help="Échantillonnage fixe", dest='fix_seed', action='store_true')
+    parser.set_defaults(all_encoders=False, without_preprocessing=False, fix_seed=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)
