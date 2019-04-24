@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Expériences avec échantillonnage fixe
 # À lancer depuis la racine du projet
-printf "launch_experiments_fixed.sh - Expériences avec échantillonnage fixe avec tous les encodeurs"
+printf "launch_experiments_fixed.sh - Expériences avec échantillonnage fixe avec tous les encodeurs\n"
 printf "1/10 - database fixed\n"
 python model.py -m svm -a -d datapapers -n database -f
 printf "2/10 - datamining fixed\n"
