@@ -27,12 +27,12 @@ def main():
         print("Traitement/extraction des phrases")
 
         taille_df = df.shape[0]
-        for index, row in tqdm(df.iterrows(), total=taille_df):
+        for index, row in tqdm(df.iterrows(), dynamic_ncols=True, total=taille_df):
             sentences = [x.strip() for x in re.split('\.', row['abstract'].lower())]
             list_sentences = list_sentences + sentences
         print("Export des phrases")
         with open("Exports/datapapers_sentences.csv", 'w') as f:
-            for line in tqdm(list_sentences):
+            for line in tqdm(list_sentences, dynamic_ncols=True):
                 if line and len(line) > 2:
                     f.write(f"{line}\n")
     elif file == "nytdata":
@@ -42,13 +42,13 @@ def main():
         print("Traitement/extraction des phrases")
 
         taille_df = df.shape[0]
-        for index, row in tqdm(df.iterrows(), total=taille_df):
+        for index, row in tqdm(df.iterrows(), dynamic_ncols=True, total=taille_df):
             sentences = [x.strip() for x in re.split('\.', row['texts'].lower())]
             list_sentences = list_sentences + sentences
 
         print("Export des phrases")
         with open("Exports/nytdata_sentences.csv", 'w') as f:
-            for line in tqdm(list_sentences):
+            for line in tqdm(list_sentences, dynamic_ncols=True):
                 if line and len(line) > 2:
                     f.write(f"{line}\n")
 

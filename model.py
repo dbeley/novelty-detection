@@ -328,7 +328,7 @@ def main():
             logger.info(f"Paramètres : Données = {data_filename}, Nouveauté = {theme}, Encodeur = {single_encoder}, Méthode = {method}, Historique/Contexte/Nouveauté : {size_historic}/{size_context}/{size_novelty}")
 
             # Boucle d'itération
-            for iteration in tqdm(range(0, ITERATION_NB)):
+            for iteration in tqdm(range(0, ITERATION_NB), dynamic_ncols=True):
                 iteration_begin = time.time()
                 logger.debug(f"iteration : {iteration}")
                 data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme, fix_seed=fix_seed)
