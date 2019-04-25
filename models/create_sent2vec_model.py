@@ -47,7 +47,7 @@ def main():
             list_sentences = list_sentences + sentences
 
         print("Export des phrases")
-        with open("Exports/nytdata_sentences.csv", 'w') as f:
+        with open("../Exports/nytdata_sentences.csv", 'w') as f:
             for line in tqdm(list_sentences, dynamic_ncols=True):
                 if line and len(line) > 2:
                     f.write(f"{line}\n")
