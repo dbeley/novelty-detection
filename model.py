@@ -47,12 +47,12 @@ PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.c
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent"]
 # SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
-ITERATION_NB = 50
+ITERATION_NB = 1
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 5],
-                [2000, 300, 50],
-                [2000, 300, 150],
-                [2000, 300, 280],
+                # [2000, 300, 50],
+                # [2000, 300, 150],
+                # [2000, 300, 280],
                 # [5000, 300, 50],
                 # [5000, 300, 150],
                 # [5000, 300, 280],
@@ -73,10 +73,9 @@ def split_data(data, size_historic, size_context, size_novelty, theme, fix_seed)
     idx_no_novelty = list(no_novelty.index)
 
     idx_all = random.sample(idx_no_novelty, size_historic + size_context - size_novelty)
-    # data_historic =  taille 0:size_historic (2000)
-    # data_context = taille sizehistoric: + 20 dans idx_novelty
-
+    # historique -> taille 0:size_historic (2000)
     idx_historic = idx_all[0:size_historic]
+    # contexte -> taille sizehistoric: + 20 dans idx_novelty
     idx_context = idx_all[size_historic:] + random.sample(idx_novelty, size_novelty)
     data_historic = data.iloc[idx_historic]
     data_context = data.iloc[idx_context]
@@ -100,15 +99,14 @@ def main():
             logger.info("Logging : debug")
             absl.logging.set_verbosity('debug')
             absl.logging.set_stderrthreshold('debug')
-        # and any other apis you want, if you want
 
-    # parsage des arguments
+    # Parsage des arguments
     dataset = args.dataset
     without_preprocessing = args.without_preprocessing
     theme = args.novelty
     fix_seed = args.fix_seed
 
-    # chargement des données
+    # Chargement du jeu de données
     if dataset == 'datapapers':
         if without_preprocessing:
             logger.debug("Utilisation du jeu de données datapapers.csv")
@@ -161,7 +159,6 @@ def main():
         logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASET}")
         exit()
 
-
     all_encoders = args.all_encoders
     encoder = [args.encoder]
 
@@ -179,6 +176,7 @@ def main():
         logger.error(f"Méthode {method} non implémentée. Choix = {SUPPORTED_METHODS}")
         exit()
 
+    # Variables pour les résultats bruts
     raw_variables_list = ['ID',
                           'fixed_sample',
                           'data_filename',
@@ -204,6 +202,7 @@ def main():
                           'gmean'
                           ]
 
+    # Variables pour les résultats condensés
     condensed_variables_list = ['ID',
                                 'fixed_sample',
                                 'data_filename',
@@ -285,7 +284,7 @@ def main():
         # Chargement de l'encodeur
         logger.debug("Chargement de l'encoder")
 
-        # Initialisation du nom du modèle
+        # Initialisation de l'encodeur
         model_name = "Non applicable"
         if single_encoder == "infersent":
             encoder_model = infersent_model(pkl_path=PATH_INFERSENT_PKL, w2v_path=PATH_INFERSENT_W2V)
@@ -334,8 +333,8 @@ def main():
                 data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme, fix_seed=fix_seed)
 
                 # Export des jeux de données pour débogage
-                # data_historic.to_csv('Exports/datapapers_historic.csv')
-                # data_context.to_csv('Exports/datapapers_context.csv')
+                # data_historic.to_csv(f'Exports/datapapers_historic_{ID_test}.csv')
+                # data_context.to_csv(f'Exports/datapapers_context_{ID_test}.csv')
 
                 logger.debug("Création des embeddings")
                 if single_encoder in ["infersent", "sent2vec"]:
@@ -353,10 +352,10 @@ def main():
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
 
                 # Export des embeddings pour débogage
-                # with open(f"Exports/vector_historic_{single_encoder}.csv", 'w') as f:
+                # with open(f"Exports/vector_historic_{single_encoder}_{ID_test}.csv", 'w') as f:
                 #     for x in vector_historic:
                 #         f.write(f"{x}\n")
-                # with open(f"Exports/vector_context_{single_encoder}.csv", 'w') as f:
+                # with open(f"Exports/vector_context_{single_encoder}_{ID_test}.csv", 'w') as f:
                 #     for x in vector_context:
                 #         f.write(f"{x}\n")
 

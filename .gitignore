@@ -4,3 +4,4 @@ Exports/
 Tests/
 __pycache__/
 archives/
+venv/
