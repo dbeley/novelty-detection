@@ -17,6 +17,7 @@ from tqdm import tqdm
 from pathlib import Path
 from sklearn.metrics import roc_auc_score
 from sklearn.svm import OneClassSVM
+from sklearn.feature_extraction.text import TfidfVectorizer
 from encoders.infersent import infersent_model
 from encoders.sent2vec import sent2vec_model
 from encoders.word2vec import word2vec_mean_model
@@ -44,15 +45,15 @@ PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
 SUPPORTED_DATASETS = ['datapapers', 'nytdata']
 PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
-SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent"]
+SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent", "tf-idf"]
 # SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
-ITERATION_NB = 1
+ITERATION_NB = 10
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 5],
-                # [2000, 300, 50],
-                # [2000, 300, 150],
-                # [2000, 300, 280],
+                [2000, 300, 50],
+                [2000, 300, 150],
+                [2000, 300, 280],
                 # [5000, 300, 50],
                 # [5000, 300, 150],
                 # [5000, 300, 280],
@@ -282,7 +283,7 @@ def main():
     for single_encoder in encoder:
 
         # Chargement de l'encodeur
-        logger.debug("Chargement de l'encoder")
+        logger.debug("Chargement de l'encodeur")
 
         # Initialisation de l'encodeur
         model_name = "Non applicable"
@@ -301,6 +302,8 @@ def main():
             logger.info(f"Chargement du modèle fasttext ({PATH_FASTTEXT}) (~15 minutes)")
             encoder_model = KeyedVectors.load_word2vec_format(PATH_FASTTEXT)
             model_name = PATH_FASTTEXT
+        elif single_encoder == "tf-idf":
+            logger.info("Utilisation de TF-IDF")
 
         # Mise en forme du nom du modèle
         model_name = Path(model_name).stem
@@ -350,14 +353,20 @@ def main():
                     vector_historic = word2vec_mean_model(encoder_model, list(data_historic.abstract.astype(str)))
                     # logger.debug("Création vector_context")
                     vector_context = word2vec_mean_model(encoder_model, list(data_context.abstract.astype(str)))
+                elif single_encoder == "tf-idf":
+                    vectorizer = TfidfVectorizer()
+                    data_all = pd.concat([data_historic, data_context], ignore_index=True)
+                    X = vectorizer.fit_transform(data_all.abstract.astype(str)).toarray()
+                    vector_historic = X[0:len(data_historic.index)]
+                    vector_context = X[len(data_historic.index):]
 
                 # Export des embeddings pour débogage
-                # with open(f"Exports/vector_historic_{single_encoder}_{ID_test}.csv", 'w') as f:
-                #     for x in vector_historic:
-                #         f.write(f"{x}\n")
-                # with open(f"Exports/vector_context_{single_encoder}_{ID_test}.csv", 'w') as f:
-                #     for x in vector_context:
-                #         f.write(f"{x}\n")
+                with open(f"Exports/vector_historic_{single_encoder}_{ID_test}.csv", 'w') as f:
+                    for x in vector_historic:
+                        f.write(f"{x}\n")
+                with open(f"Exports/vector_context_{single_encoder}_{ID_test}.csv", 'w') as f:
+                    for x in vector_context:
+                        f.write(f"{x}\n")
 
                 # classification
                 if method == "score":
@@ -408,7 +417,7 @@ def main():
                 # Export des résultats bruts
                 logger.debug("Exports des résultats bruts")
                 with open(raw_results_filename, 'a+') as f:
-                    f.write(f"{ID_test};{fix_seed};{data_filename};{heure_test};{theme};{single_encoder};{model_name};{method};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC};{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
+                    f.write(f"{ID_test};{fix_seed};{data_filename};{heure_test};{theme};{single_encoder};{model_name};{method};{size_historic};{size_context};{size_novelty};{iteration};{AUC};{iteration_time};{';'.join(map(str, matrice_confusion))};{';'.join(map(str, mesures))}\n")
 
             # Création résultats condensés
             AUC_condensed = round(sum(AUC_list) / float(len(AUC_list)), 2)
@@ -427,7 +436,7 @@ def main():
             # Export des résultats condensés
             logger.debug("Exports des résultats condensés")
             with open(condensed_results_filename, 'a+') as f:
-                f.write(f"{ID_test};{fix_seed};{data_filename};{heure_test};{theme};{single_encoder};{model_name};{method};{size_historic};{size_context};{size_novelty};{iteration+1};{AUC_condensed};{iteration_time_condensed};{';'.join(map(str, mean_matrice_confusion_condensed))};{';'.join(map(str, mean_mesures_condensed))};{';'.join(map(str, std_matrice_confusion_condensed))};{';'.join(map(str, std_mesures_condensed))};{';'.join(map(str, quantile025_matrice_confusion_condensed))};{';'.join(map(str, quantile025_mesures_condensed))};{';'.join(map(str, med_matrice_confusion_condensed))};{';'.join(map(str, med_mesures_condensed))};{';'.join(map(str, quantile075_matrice_confusion_condensed))};{';'.join(map(str, quantile075_mesures_condensed))}\n")
+                f.write(f"{ID_test};{fix_seed};{data_filename};{heure_test};{theme};{single_encoder};{model_name};{method};{size_historic};{size_context};{size_novelty};{iteration};{AUC_condensed};{iteration_time_condensed};{';'.join(map(str, mean_matrice_confusion_condensed))};{';'.join(map(str, mean_mesures_condensed))};{';'.join(map(str, std_matrice_confusion_condensed))};{';'.join(map(str, std_mesures_condensed))};{';'.join(map(str, quantile025_matrice_confusion_condensed))};{';'.join(map(str, quantile025_mesures_condensed))};{';'.join(map(str, med_matrice_confusion_condensed))};{';'.join(map(str, med_mesures_condensed))};{';'.join(map(str, quantile075_matrice_confusion_condensed))};{';'.join(map(str, quantile075_mesures_condensed))}\n")
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
@@ -436,7 +445,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Script principal')
     parser.add_argument('--debug', help="Display debugging information", action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.INFO)
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
-    parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE ou fasttext)", type=str)
+    parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE, fasttext ou tf-idf)", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
     parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données sélectionné, mais sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
     parser.add_argument('-d', '--dataset', help="Jeu de données à utiliser (datapapers ou nytdata)", type=str)

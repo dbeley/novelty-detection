@@ -19,9 +19,12 @@ PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 PATH_DATAPAPERS_CLEAN = os.path.expanduser("~/Documents/Stage/sentences_embeddings/Exports/datapapers_clean.csv")
 
 # historic, context, novelty
-SAMPLES_LIST = [[2000, 300, 0],
-                [5000, 20, 20],
-                [5000, 0, 0]
+SAMPLES_LIST = [[2000, 300, 5],
+                [2000, 300, 10],
+                [2000, 300, 20],
+                # [2000, 300, 0],
+                # [5000, 20, 20],
+                # [5000, 0, 0]
                 # [2000, 300, 5],
                 # [2000, 300, 10],
                 # [2000, 300, 50]

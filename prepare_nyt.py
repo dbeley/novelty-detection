@@ -4,7 +4,7 @@ import os
 # %matplotlib inline
 
 # Jeu de données a utiliser
-DATASET = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
+DATASET = os.path.expanduser("~/Documents/Données/data_big_category_long_final.csv")
 
 df = pd.read_csv(DATASET, sep="\t", encoding = "ISO-8859-1", engine='python')
 
