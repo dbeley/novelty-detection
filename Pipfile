@@ -12,6 +12,9 @@ tqdm = "*"
 scikit-learn = "*"
 gensim = "*"
 torch = "*"
+cython = "*"
+tensorflow = "*"
+tensorflow-hub = "*"
 
 [requires]
 python_version = "3.7"

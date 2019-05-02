@@ -8,6 +8,7 @@ import argparse
 import logging
 import time
 import os
+import errno
 
 logger = logging.getLogger()
 
@@ -18,9 +19,12 @@ PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
 PATH_DATAPAPERS_CLEAN = os.path.expanduser("~/Documents/Stage/sentences_embeddings/Exports/datapapers_clean.csv")
 
 # historic, context, novelty
-SAMPLES_LIST = [[2000, 300, 5],
-                [2000, 300, 10],
-                [2000, 300, 50]
+SAMPLES_LIST = [[2000, 300, 0],
+                [5000, 20, 20],
+                [5000, 0, 0]
+                # [2000, 300, 5],
+                # [2000, 300, 10],
+                # [2000, 300, 50]
                 # [2000, 300, 50],
                 # [2000, 300, 150],
                 # [2000, 300, 280],
@@ -33,7 +37,7 @@ SAMPLES_LIST = [[2000, 300, 5],
                 # [2000, 1000, 500],
                 ]
 # seed à utiliser pour l'échantillonnage
-SEEDS = [1, 4, 25]
+SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
 def split_data(data, size_historic, size_context, size_novelty, theme, fix_seed=9583):
@@ -58,43 +62,43 @@ def main():
     args = parse_args()
 
     # Parsage des arguments
-    dataset = args.dataset
     without_preprocessing = args.without_preprocessing
     theme = args.novelty
 
+    # Création du dossier Exports si non existant
+    if not os.path.exists("Exports"):
+        try:
+            os.makedirs("Exports")
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
+
     # Chargement du jeu de données
-    if dataset == 'datapapers':
-        if without_preprocessing:
-            logger.info("Utilisation du jeu de données datapapers.csv")
-            data_filename = "datapapers.csv"
-            try:
-                data = pd.read_csv(PATH_DATAPAPERS, sep="\t", encoding="utf-8")
-                data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé.")
-                exit()
-        else:
-            logger.info("Utilisation du jeu de données datapapers_clean.csv")
-            data_filename = "datapapers_clean.csv"
-            try:
-                data = pd.read_csv(PATH_DATAPAPERS_CLEAN)
-                data.columns = ['id', 'abstract', 'theme']
-                data = data.drop(['id'], axis=1)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
-                exit()
-    elif dataset is None:
-        logger.error(f"Entrez un jeu de données avec l'argument -d/--dataset")
-        exit()
+    if without_preprocessing:
+        logger.info("Utilisation du jeu de données datapapers.csv")
+        data_filename = "datapapers.csv"
+        try:
+            data = pd.read_csv(PATH_DATAPAPERS, sep="\t", encoding="utf-8")
+            data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
+        except Exception as e:
+            logger.error(str(e))
+            logger.error(f"Fichier {data_filename} non trouvé.")
+            exit()
     else:
-        logger.error(f"Jeu de données {dataset} non supporté.")
-        exit()
+        logger.info("Utilisation du jeu de données datapapers_clean.csv")
+        data_filename = "datapapers_clean.csv"
+        try:
+            data = pd.read_csv(PATH_DATAPAPERS_CLEAN)
+            data.columns = ['id', 'abstract', 'theme']
+            data = data.drop(['id'], axis=1)
+        except Exception as e:
+            logger.error(str(e))
+            logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
+            exit()
 
     # Boucle sur les seeds et les paramètres d'échantillons
     for seed in SEEDS:
-        logger.info("Seed : {seed}")
+        logger.info(f"Seed : {seed}")
         for exp in SAMPLES_LIST:
             # Récupération des paramètres d'échantillons
             size_historic = exp[0]
@@ -103,8 +107,12 @@ def main():
             logger.info(f"historique : {size_historic}, contexte : {size_context}, nouveauté : {size_novelty}")
 
             data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme, fix_seed=seed)
-            data_historic.to_csv(f"Exports/historic_s{seed}_{size_historic}_{size_context}_{size_novelty}_{theme}.csv", sep='\t')
-            data_context.to_csv(f"Exports/context_s{seed}_{size_historic}_{size_context}_{size_novelty}_{theme}.csv", sep='\t')
+            if without_preprocessing:
+                data_historic.to_csv(f"Exports/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
+                data_context.to_csv(f"Exports/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
+            else:
+                data_historic.to_csv(f"Exports/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers_clean.csv", sep='\t')
+                data_context.to_csv(f"Exports/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_dapapers_clean.csv", sep='\t')
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
