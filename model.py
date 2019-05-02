@@ -48,19 +48,12 @@ PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.c
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent", "tf-idf"]
 # SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
-ITERATION_NB = 10
+ITERATION_NB = 50
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 5],
+                [2000, 300, 10],
+                [2000, 300, 20],
                 [2000, 300, 50],
-                [2000, 300, 150],
-                [2000, 300, 280],
-                # [5000, 300, 50],
-                # [5000, 300, 150],
-                # [5000, 300, 280],
-                # [2000, 1000, 50],
-                # [2000, 1000, 100],
-                # [2000, 1000, 250],
-                # [2000, 1000, 500],
                 ]
 
 
@@ -356,7 +349,7 @@ def main():
                 elif single_encoder == "tf-idf":
                     vectorizer = TfidfVectorizer()
                     data_all = pd.concat([data_historic, data_context], ignore_index=True)
-                    X = vectorizer.fit_transform(data_all.abstract.astype(str)).toarray()
+                    X = vectorizer.fit_transform(data_all.abstract.astype(str)).toarray().tolist()
                     vector_historic = X[0:len(data_historic.index)]
                     vector_context = X[len(data_historic.index):]
 
