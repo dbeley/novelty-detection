@@ -44,7 +44,8 @@ PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
 # PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/datapapers_fasttext_model.vec")
 SUPPORTED_DATASETS = ['datapapers', 'nytdata']
 PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
-PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
+# PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
+PATH_NYTDATA = os.path.expanduser("~/Documents/Données/experimentations.csv")
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent", "tf-idf"]
 # SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
@@ -97,61 +98,64 @@ def main():
     # Parsage des arguments
     dataset = args.dataset
     without_preprocessing = args.without_preprocessing
+    reproductible_dataset = args.reproductible_dataset
     theme = args.novelty
     fix_seed = args.fix_seed
 
     # Chargement du jeu de données
-    if dataset == 'datapapers':
-        if without_preprocessing:
-            logger.debug("Utilisation du jeu de données datapapers.csv")
-            data_filename = "datapapers.csv"
-            try:
-                data = pd.read_csv(PATH_DATAPAPERS, sep="\t", encoding="utf-8")
-                data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé.")
-                exit()
+    if not reproductible_dataset:
+        logger.debug("option reproductible_dataset non activée.")
+        if dataset == 'datapapers':
+            if without_preprocessing:
+                logger.debug("Utilisation du jeu de données datapapers.csv")
+                data_filename = "datapapers.csv"
+                try:
+                    data = pd.read_csv(PATH_DATAPAPERS, sep="\t", encoding="utf-8")
+                    data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
+                except Exception as e:
+                    logger.error(str(e))
+                    logger.error(f"Fichier {data_filename} non trouvé.")
+                    exit()
+            else:
+                logger.debug("Utilisation du jeu de données datapapers_clean.csv")
+                data_filename = "datapapers_clean.csv"
+                try:
+                    data = pd.read_csv(f'Exports/{data_filename}')
+                    data.columns = ['id', 'abstract', 'theme']
+                    data = data.drop(['id'], axis=1)
+                except Exception as e:
+                    logger.error(str(e))
+                    logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
+                    exit()
+        elif dataset == 'nytdata':
+            if without_preprocessing:
+                logger.debug("Utilisation du jeu de données data_big_category_long.csv")
+                data_filename = "nytdata.csv"
+                try:
+                    data = pd.read_csv(PATH_NYTDATA, sep="\t", encoding="utf-8")
+                    data = data.drop(['week', 'titles'], axis=1)
+                    data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
+                except Exception as e:
+                    logger.error(str(e))
+                    logger.error(f"Fichier {data_filename} non trouvé.")
+                    exit()
+            else:
+                logger.debug("Utilisation du jeu de données nytdata_clean.csv")
+                data_filename = "nytdata_clean.csv"
+                try:
+                    data = pd.read_csv(f'Exports/{data_filename}')
+                    # data = data.drop(['week', 'second_classifier', 'titles', 'third_classifier'], axis=1)
+                    data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
+                except Exception as e:
+                    logger.error(str(e))
+                    logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
+                    exit()
+        elif dataset is None:
+            logger.error(f"Entrez un jeu de données avec l'argument -d/--dataset parmi {SUPPORTED_DATASETS}.")
+            exit()
         else:
-            logger.debug("Utilisation du jeu de données datapapers_clean.csv")
-            data_filename = "datapapers_clean.csv"
-            try:
-                data = pd.read_csv(f'Exports/{data_filename}')
-                data.columns = ['id', 'abstract', 'theme']
-                data = data.drop(['id'], axis=1)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
-                exit()
-    elif dataset == 'nytdata':
-        if without_preprocessing:
-            logger.debug("Utilisation du jeu de données data_big_category_long.csv")
-            data_filename = "nytdata.csv"
-            try:
-                data = pd.read_csv(PATH_NYTDATA, sep="\t", encoding="utf-8")
-                data = data.drop(['week', 'titles'], axis=1)
-                data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé.")
-                exit()
-        else:
-            logger.debug("Utilisation du jeu de données nytdata_clean.csv")
-            data_filename = "nytdata_clean.csv"
-            try:
-                data = pd.read_csv(f'Exports/{data_filename}')
-                # data = data.drop(['week', 'second_classifier', 'titles', 'third_classifier'], axis=1)
-                data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
-                exit()
-    elif dataset is None:
-        logger.error(f"Entrez un jeu de données avec l'argument -d/--dataset parmi {SUPPORTED_DATASETS}.")
-        exit()
-    else:
-        logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASET}")
-        exit()
+            logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASET}")
+            exit()
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
@@ -444,7 +448,8 @@ def parse_args():
     parser.add_argument('-d', '--dataset', help="Jeu de données à utiliser (datapapers ou nytdata)", type=str)
     parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')
     parser.add_argument('-f', '--fix_seed', help="Échantillonnage fixe", dest='fix_seed', action='store_true')
-    parser.set_defaults(all_encoders=False, without_preprocessing=False, fix_seed=False)
+    parser.add_argument('-r', '--reproductible_dataset', help="Bypass all the samples parameters and use the datasets exported by the export_dataset_reproductible.py script.", dest='reproductible_dataset', action='store_true')
+    parser.set_defaults(all_encoders=False, without_preprocessing=False, fix_seed=False, reproductible_dataset=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)

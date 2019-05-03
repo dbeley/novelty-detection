@@ -69,12 +69,12 @@ def main():
     theme = args.novelty
 
     # Création du dossier Exports si non existant
-    if not os.path.exists("Exports"):
-        try:
-            os.makedirs("Exports")
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
+    try:
+        os.makedirs("Exports/datapapers_fixed")
+    except FileExistsError:
+        # directory already exists
+        logger.info("Dossier d'export déjà existant.")
+        pass
 
     # Chargement du jeu de données
     if without_preprocessing:
@@ -111,11 +111,11 @@ def main():
 
             data_historic, data_context = split_data(data, size_historic=size_historic, size_context=size_context, size_novelty=size_novelty, theme=theme, fix_seed=seed)
             if without_preprocessing:
-                data_historic.to_csv(f"Exports/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
-                data_context.to_csv(f"Exports/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
+                data_historic.to_csv(f"Exports/datapapers_fixed/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
+                data_context.to_csv(f"Exports/datapapers_fixed/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
             else:
-                data_historic.to_csv(f"Exports/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers_clean.csv", sep='\t')
-                data_context.to_csv(f"Exports/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_dapapers_clean.csv", sep='\t')
+                data_historic.to_csv(f"Exports/datapapers_fixed/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers_clean.csv", sep='\t')
+                data_context.to_csv(f"Exports/datapapers_fixed/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_dapapers_clean.csv", sep='\t')
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
