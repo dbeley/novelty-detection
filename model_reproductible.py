@@ -1,6 +1,7 @@
 """
 Script principal.
 Effectue les tests renseignés par les variables globales et les arguments entrés lors du lancement du script.
+Version utilisation les jeux de données du dossier Exports/datapapers_fixed
 """
 
 import pandas as pd
@@ -37,10 +38,8 @@ PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/datapapers_model.bi
 # PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
 PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
 # PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/datapapers_fasttext_model.vec")
-SUPPORTED_DATASETS = ['datapapers', 'nytdata']
-PATH_DATAPAPERS = os.path.expanduser("~/Documents/Données/datapapers.csv")
-# PATH_NYTDATA = os.path.expanduser("~/Documents/Données/data_big_category_long.csv")
-PATH_NYTDATA = os.path.expanduser("~/Documents/Données/experimentations.csv")
+
+PATH_DATAPAPERS_FIXED = os.path.expanduser("~/Documents/Stage/sentences_embeddings/Exports/datapapers_fixed")
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent", "tf-idf"]
 # SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
@@ -49,7 +48,6 @@ ITERATION_NB = 50
 SAMPLES_LIST = [[2000, 300, 5],
                 [2000, 300, 10],
                 [2000, 300, 20],
-                [2000, 300, 50],
                 ]
 
 
@@ -71,62 +69,8 @@ def main():
             absl.logging.set_stderrthreshold('debug')
 
     # Parsage des arguments
-    dataset = args.dataset
-    without_preprocessing = args.without_preprocessing
-    theme = args.novelty
-    fix_seed = args.fix_seed
-
-    # Chargement du jeu de données
-    if dataset == 'datapapers':
-        if without_preprocessing:
-            logger.debug("Utilisation du jeu de données datapapers.csv")
-            data_filename = "datapapers.csv"
-            try:
-                data = pd.read_csv(PATH_DATAPAPERS, sep="\t", encoding="utf-8")
-                data = data.drop(['id', 'conf', 'title', 'author', 'year', 'eq', 'conf_short'], axis=1)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé.")
-                exit()
-        else:
-            logger.debug("Utilisation du jeu de données datapapers_clean.csv")
-            data_filename = "datapapers_clean.csv"
-            try:
-                data = pd.read_csv(f'Exports/{data_filename}')
-                data.columns = ['id', 'abstract', 'theme']
-                data = data.drop(['id'], axis=1)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
-                exit()
-    elif dataset == 'nytdata':
-        if without_preprocessing:
-            logger.debug("Utilisation du jeu de données data_big_category_long.csv")
-            data_filename = "nytdata.csv"
-            try:
-                data = pd.read_csv(PATH_NYTDATA, sep="\t", encoding="utf-8")
-                data = data.drop(['week', 'titles'], axis=1)
-                data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé.")
-                exit()
-        else:
-            logger.debug("Utilisation du jeu de données nytdata_clean.csv")
-            data_filename = "nytdata_clean.csv"
-            try:
-                data = pd.read_csv(f'Exports/{data_filename}')
-                data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
-            except Exception as e:
-                logger.error(str(e))
-                logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
-                exit()
-    elif dataset is None:
-        logger.error(f"Entrez un jeu de données avec l'argument -d/--dataset parmi {SUPPORTED_DATASETS}.")
-        exit()
-    else:
-        logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASET}")
-        exit()
+    theme = 'theory'
+    fix_seed = False
 
     all_encoders = args.all_encoders
     encoder = [args.encoder]
@@ -277,9 +221,12 @@ def main():
         # Mise en forme du nom du modèle
         model_name = Path(model_name).stem
 
-        # Boucle sur les paramètres d'échantillons définis dans samples_list
         for exp in SAMPLES_LIST:
+            # Générateur fichiers (10 normalement)
             experiment = Experiment(single_encoder, exp)
+
+            # Chargement des données datapapers_fixed pour cette expérience
+            gen_files = sorted(Path(PATH_DATAPAPERS_FIXED).glob(f"**/context_{experiment.size_historic}_{experiment.size_context}_{experiment.size_novelty}_*"))
 
             # Liste des résultats
             AUC_list = []
@@ -288,14 +235,20 @@ def main():
             iteration_time_list = []
 
             # Résumé du test
-            logger.info(f"Paramètres : Données = {data_filename}, Nouveauté = {theme}, Encodeur = {experiment.encoder}, Méthode = {method}, Historique/Contexte/Nouveauté : {experiment.size_historic}/{experiment.size_context}/{experiment.size_novelty}")
+            logger.info(f"Paramètres : Données = datapapers_fixed, Nouveauté = {theme}, Encodeur = {experiment.encoder}, Méthode = {method}, Historique/Contexte/Nouveauté : {experiment.size_historic}/{experiment.size_context}/{experiment.size_novelty}")
 
-            # Boucle d'itération
-            for iteration in tqdm(range(1, ITERATION_NB + 1), dynamic_ncols=True):
+            # Boucle sur les 10 fichiers
+            for iteration in gen_files:
                 iteration_begin = time.time()
-                logger.debug(f"iteration : {iteration}")
-                data_historic, data_context = split_data(data, size_historic=experiment.size_historic, size_context=experiment.size_context, size_novelty=experiment.size_novelty, theme=theme, fix_seed=fix_seed)
 
+                data_context = pd.read_csv(iteration, sep='\t')
+                # n_data_historic = str(PATH_DATAPAPERS_FIXED) + "/historic_" + '_'.join(i.stem.split('/')[-1].split('_')[1:]) + ".csv"
+                n_data_historic = "Exports/datapapers_fixed/historic_" + '_'.join(iteration.stem.split('/')[-1].split('_')[1:]) + ".csv"
+                data_filename = n_data_historic
+                print(n_data_historic)
+                data_historic = pd.read_csv(n_data_historic, sep='\t')
+                data_historic.columns = ['id', 'abstract', 'theme']
+                data_context.columns = ['id', 'abstract', 'theme']
                 # Assignation de l'historique et du context
                 experiment.set_datasets(data_historic, data_context)
 
@@ -344,7 +297,8 @@ def main():
 
             # Création résultats condensés
             AUC_condensed = round(sum(AUC_list) / float(len(AUC_list)), 2)
-            iteration_time_condensed = round(sum(iteration_time_list) / float(len(iteration_time_list)), 2)
+            # iteration_time_condensed = round(sum(iteration_time_list) / float(len(iteration_time_list)), 2)
+            iteration_time_condensed = 'rien'
             mean_matrice_confusion_condensed = np.round(np.mean(np.array(matrice_confusion_list), axis=0), 2)
             mean_mesures_condensed = np.round(np.mean(np.array(mesures_list), axis=0), 2)
             std_matrice_confusion_condensed = np.round(np.std(np.array(matrice_confusion_list), axis=0), 2)
@@ -370,11 +324,7 @@ def parse_args():
     parser.add_argument('-m', '--method', help="Méthode (score ou svm)", type=str)
     parser.add_argument('-e', '--encoder', help="Encodeur mots/phrases/documents (infersent, sent2vec, USE, fasttext ou tf-idf)", type=str)
     parser.add_argument('-a', '--all_encoders', help="Active tous les encodeurs implémentés", dest='all_encoders', action='store_true')
-    parser.add_argument('-p', '--without_preprocessing', help="Utilise le jeu de données sélectionné, mais sans pré-traitement (phrases complètes)", dest='without_preprocessing', action='store_true')
-    parser.add_argument('-d', '--dataset', help="Jeu de données à utiliser (datapapers ou nytdata)", type=str)
-    parser.add_argument('-n', '--novelty', help="Nouveauté à découvrir (défaut = 'theory')", type=str, default='theory')
-    parser.add_argument('-f', '--fix_seed', help="Échantillonnage fixe", dest='fix_seed', action='store_true')
-    parser.set_defaults(all_encoders=False, without_preprocessing=False, fix_seed=False)
+    parser.set_defaults(all_encoders=False)
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)

@@ -115,7 +115,7 @@ def main():
                 data_context.to_csv(f"Exports/datapapers_fixed/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers.csv", sep='\t')
             else:
                 data_historic.to_csv(f"Exports/datapapers_fixed/historic_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers_clean.csv", sep='\t')
-                data_context.to_csv(f"Exports/datapapers_fixed/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_dapapers_clean.csv", sep='\t')
+                data_context.to_csv(f"Exports/datapapers_fixed/context_{size_historic}_{size_context}_{size_novelty}_s{seed}_{theme}_datapapers_clean.csv", sep='\t')
 
     logger.info("Temps d'exécution : %.2f secondes" % (time.time() - temps_debut))
 
