@@ -1,5 +1,5 @@
 """
-Script principal.
+Script principal modifié pour utiliser les jeux de données générés par export_dataset_reproductible.py
 Effectue les tests renseignés par les variables globales et les arguments entrés lors du lancement du script.
 Version utilisation les jeux de données du dossier Exports/datapapers_fixed
 """

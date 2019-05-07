@@ -1,8 +1,5 @@
 import random
-from pathlib import Path
 import logging
-import os
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +22,3 @@ def split_data(data, size_historic, size_context, size_novelty, theme, fix_seed)
     data_context = data.iloc[idx_context]
 
     return data_historic, data_context
-
-
-def get_reproductible_datasets(directory, experiment):
-    # print(directory)
-    # print(os.getcwd())
-    # print(experiment)
-    recherche = f"**/context_{experiment.size_historic}_{experiment.size_context}_{experiment.size_novelty}_s*"
-    # print(recherche)
-    for file in sorted(Path(directory).glob(recherche)):
-        logger.debug(f"Fichier {file} trouvé")
-        file2 = '_'.join([f'{directory}/historic'] + str(file).split('_')[2:])
-        df = pd.read_csv(file)
-        df2 = pd.read_csv(file2)
-        yield df, df2

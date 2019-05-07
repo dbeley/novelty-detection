@@ -15,6 +15,7 @@ torch = "*"
 cython = "*"
 tensorflow = "*"
 tensorflow-hub = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.7"
