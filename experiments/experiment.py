@@ -43,10 +43,12 @@ class Experiment():
             vector_context = word2vec_mean_model(encoder_model, list(self.data_context.abstract.astype(str)))
         elif self.encoder == "tf-idf":
             vectorizer = TfidfVectorizer()
-            data_all = pd.concat([self.data_historic, self.data_context], ignore_index=True)
-            X = vectorizer.fit_transform(data_all.abstract.astype(str)).toarray().tolist()
-            vector_historic = X[0:len(self.data_historic.index)]
-            vector_context = X[len(self.data_historic.index):]
+            # data_all = pd.concat([self.data_historic, self.data_context], ignore_index=True)
+            # X = vectorizer.fit_transform(data_all.abstract.astype(str)).toarray().tolist()
+            vector_historic = vectorizer.fit_transform(self.data_historic.abstract.astype(str)).toarray().tolist()
+            vector_context = vectorizer.transform(self.data_context.abstract.astype(str)).toarray().tolist()
+            # vector_historic = X[0:len(self.data_historic.index)]
+            # vector_context = X[len(self.data_historic.index):]
         else:
             logger.error(f"Encoder non valable, {self.encoder}")
             exit()
