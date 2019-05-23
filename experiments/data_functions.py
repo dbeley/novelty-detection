@@ -8,8 +8,11 @@ def split_data(data, size_historic, size_context, size_novelty, theme, fix_seed)
     """ Fonction qui genere le contexte et l historique """
     if fix_seed:
         random.seed(9583)
+    print(*data['theme'].unique().tolist(), sep=',')
     novelty = data[data.theme == str(theme)]
+    print(novelty.shape)
     no_novelty = data[data.theme != str(theme)]
+    print(no_novelty.shape)
     idx_novelty = list(novelty.index)
     idx_no_novelty = list(no_novelty.index)
 

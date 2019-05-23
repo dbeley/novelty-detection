@@ -44,6 +44,9 @@ PATH_NYTDATA = os.path.expanduser("~/Documents/Données/experimentations.csv")
 SUPPORTED_ENCODERS = ["sent2vec", "fasttext", "USE", "infersent", "tf-idf"]
 # SUPPORTED_ENCODERS = ["sent2vec", "USE", "infersent"]
 SUPPORTED_METHODS = ["score", "svm"]
+
+SUPPORTED_NOVELTY_NYTDATA = ['football', 'finances', 'music', 'theater', 'elections', 'housing', 'motion pictures', 'art', 'terrorism', 'united states international relations']
+SUPPORTED_NOVELTY_DATAPAPERS = ['database', 'datamining', 'medical', 'theory', 'visu']
 ITERATION_NB = 50
 #       historic, context, novelty
 SAMPLES_LIST = [[2000, 300, 5],
@@ -78,6 +81,9 @@ def main():
 
     # Chargement du jeu de données
     if dataset == 'datapapers':
+        if theme not in SUPPORTED_NOVELTY_DATAPAPERS:
+            logger.error('novelty %s not supported for %s. Supported values : %s', theme, dataset, SUPPORTED_NOVELTY_DATAPAPERS)
+            exit()
         if without_preprocessing:
             logger.debug("Utilisation du jeu de données datapapers.csv")
             data_filename = "datapapers.csv"
@@ -100,9 +106,12 @@ def main():
                 logger.error(f"Fichier {data_filename} non trouvé. Lancez le script prepare.py.")
                 exit()
     elif dataset == 'nytdata':
+        if theme not in SUPPORTED_NOVELTY_NYTDATA:
+            logger.error('novelty %s not supported for %s', theme, dataset)
+            exit()
         if without_preprocessing:
-            logger.debug("Utilisation du jeu de données data_big_category_long.csv")
-            data_filename = "nytdata.csv"
+            logger.debug("Utilisation du jeu de données experimentations.csv")
+            data_filename = "experimentations.csv"
             try:
                 data = pd.read_csv(PATH_NYTDATA, sep="\t", encoding="utf-8")
                 data = data.drop(['week', 'titles'], axis=1)
@@ -112,10 +121,11 @@ def main():
                 logger.error(f"Fichier {data_filename} non trouvé.")
                 exit()
         else:
-            logger.debug("Utilisation du jeu de données nytdata_clean.csv")
-            data_filename = "nytdata_clean.csv"
+            logger.debug("Utilisation du jeu de données experimentations.csv")
+            data_filename = "experimentations.csv"
             try:
-                data = pd.read_csv(f'Exports/{data_filename}')
+                # data = pd.read_csv(f'Exports/{data_filename}')
+                data = pd.read_csv(PATH_NYTDATA, sep="\t", encoding="utf-8")
                 data.rename(columns={'texts': 'abstract', 'principal_classifier': 'theme', 'second_classifier': 'theme2', 'third_classifier': 'theme3'}, inplace=True)
             except Exception as e:
                 logger.error(str(e))
@@ -125,7 +135,7 @@ def main():
         logger.error(f"Entrez un jeu de données avec l'argument -d/--dataset parmi {SUPPORTED_DATASETS}.")
         exit()
     else:
-        logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASET}")
+        logger.error(f"Jeu de données {dataset} non supporté. Jeux de données supportés : {SUPPORTED_DATASETS}")
         exit()
 
     all_encoders = args.all_encoders
