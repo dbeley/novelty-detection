@@ -19,11 +19,11 @@ def word2vec_mean_model(model, data):
             try:
                 vectors.append(model[str(word)].tolist())
             except Exception as e:
-                with open("Exports/word2vec_not_found.csv", 'a+') as f:
+                with open("Exports/word2vec_not_found.csv", "a+") as f:
                     f.write(f"{word}\n")
         # Calcul du vecteur moyen
         try:
-            mean_vec = [float(sum(col))/len(col) for col in zip(*vectors)]
+            mean_vec = [float(sum(col)) / len(col) for col in zip(*vectors)]
         except Exception as e:
             logger.error(f"{str(e)} - mean_vec : {mean_vec}")
         if len(mean_vec) == 0 or mean_vec is None:

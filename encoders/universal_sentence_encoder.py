@@ -18,7 +18,11 @@ class hub_module(hub.Module):
 
 def get_USE_embeddings(model, messages):
     with tf.Session() as session:
-        session.run([tf.global_variables_initializer(), tf.tables_initializer()])
-        message_embeddings = np.array(session.run(model(list(messages)))).tolist()
+        session.run(
+            [tf.global_variables_initializer(), tf.tables_initializer()]
+        )
+        message_embeddings = np.array(
+            session.run(model(list(messages)))
+        ).tolist()
         session.close()
     return message_embeddings

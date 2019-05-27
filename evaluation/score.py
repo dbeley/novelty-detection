@@ -6,7 +6,8 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-def calcul_seuil(vector_historic, m='cosinus', k=1, q=0.95):
+
+def calcul_seuil(vector_historic, m="cosinus", k=1, q=0.95):
     """ Determination du seuil """
 
     """ Entrées :
@@ -22,7 +23,7 @@ def calcul_seuil(vector_historic, m='cosinus', k=1, q=0.95):
     return pd.Series(res).quantile(q)
 
 
-def calcul_score(vector_historic, vector_context, m='cosinus', k=1, s=0):
+def calcul_score(vector_historic, vector_context, m="cosinus", k=1, s=0):
     """ Score de nouveauté """
 
     """ Entrées :
@@ -35,9 +36,13 @@ def calcul_score(vector_historic, vector_context, m='cosinus', k=1, s=0):
                   Renvoie un vecteur de score pour chaque document du contexte testé (np.array)
     """
 
-    if m.lower() == 'pearson':
-        vector_context = np.transpose(np.transpose(vector_context) - vector_context.mean(axis = 1))
-        vector_historic = np.transpose(np.transpose(vector_historic) - vector_historic.mean(axis = 1))
+    if m.lower() == "pearson":
+        vector_context = np.transpose(
+            np.transpose(vector_context) - vector_context.mean(axis=1)
+        )
+        vector_historic = np.transpose(
+            np.transpose(vector_historic) - vector_historic.mean(axis=1)
+        )
 
     c = abs(cosine_similarity(vector_context, vector_historic))
     d = 1 - c
@@ -49,10 +54,10 @@ def calcul_score(vector_historic, vector_context, m='cosinus', k=1, s=0):
     if k < s:
         k = s + 1
 
-    return (np.sum(d[:, s:(k+s)], axis=1) / k)
+    return np.sum(d[:, s : (k + s)], axis=1) / k
 
 
-def score_novelty(vector_historic, vector_context, m='cosinus', k=1, s=0):
+def score_novelty(vector_historic, vector_context, m="cosinus", k=1, s=0):
     """ Score de nouveauté """
 
     """ Entrées :
@@ -65,10 +70,14 @@ def score_novelty(vector_historic, vector_context, m='cosinus', k=1, s=0):
                   Renvoie un vecteur de score pour chaque document du contexte testé (np.array)
     """
 
-    if m.lower() == 'pearson':
-        vector_context = np.transpose(np.transpose(vector_context) - vector_context.mean(axis=1))
-        vector_historic = np.transpose(np.transpose(vector_historic) - vector_historic.mean(axis=1))
-        
+    if m.lower() == "pearson":
+        vector_context = np.transpose(
+            np.transpose(vector_context) - vector_context.mean(axis=1)
+        )
+        vector_historic = np.transpose(
+            np.transpose(vector_historic) - vector_historic.mean(axis=1)
+        )
+
     c = abs(cosine_similarity(vector_context, vector_historic))
     d = 1 - c
     d.sort(axis=1)
@@ -79,4 +88,4 @@ def score_novelty(vector_historic, vector_context, m='cosinus', k=1, s=0):
     if k < s:
         k = s + 1
 
-    return np.sum(d[:, s:(k+s)], axis=1) / k
+    return np.sum(d[:, s : (k + s)], axis=1) / k
