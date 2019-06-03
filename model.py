@@ -68,13 +68,17 @@ SUPPORTED_NOVELTY_DATAPAPERS = [
     "theory",
     "visu",
 ]
-ITERATION_NB = 50
+ITERATION_NB = 10
 #       historic, context, novelty
 SAMPLES_LIST = [
     [2000, 300, 5],
     [2000, 300, 10],
     [2000, 300, 20],
     [2000, 300, 50],
+    [2000, 500, 20],
+    [2000, 500, 50],
+    [5000, 500, 20],
+    [5000, 500, 50],
 ]
 
 
@@ -419,6 +423,14 @@ def main():
                 matrice_confusion = mat_conf(obs, pred)
                 logger.debug(f"matrice : {matrice_confusion}")
                 mesures = all_measures(matrice_confusion, obs, pred)
+
+                # data_context["obs"] = pd.Series(obs).values
+                # data_context["pred"] = pd.Series(pred).values
+                # data_context["score"] = pd.Series(score).values
+                # data_context.to_csv(
+                #     f"Exports/bloub/data_context_{experiment.size_historic}_{experiment.size_context}_{experiment.size_novelty}_{iteration}.csv",
+                #     sep="\t",
+                # )
 
                 AUC = roc_auc_score(obs2, score)
 
