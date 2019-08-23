@@ -33,10 +33,13 @@ PATH_INFERSENT_W2V = os.path.expanduser(
     "~/Documents/Données/glove.840B.300d.txt"
 )
 # sent2vec
-# PATH_SENT2VEC_BIN = os.path.expanduser("~/Documents/Données/torontobooks_unigrams.bin")
 PATH_SENT2VEC_BIN = os.path.expanduser(
-    "~/Documents/Données/datapapers_model.bin"
+    "~/Documents/Données/torontobooks_unigrams.bin"
 )
+
+# PATH_SENT2VEC_BIN = os.path.expanduser(
+#     "~/Documents/Données/datapapers_model.bin"
+# )
 # fasttext
 # PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/crawl-300d-2M.vec")
 PATH_FASTTEXT = os.path.expanduser("~/Documents/Données/wiki-news-300d-1M.vec")
@@ -71,14 +74,12 @@ SUPPORTED_NOVELTY_DATAPAPERS = [
 ITERATION_NB = 10
 #       historic, context, novelty
 SAMPLES_LIST = [
-    [2000, 300, 5],
-    [2000, 300, 10],
-    [2000, 300, 20],
+    # [2000, 300, 5],
+    # [2000, 300, 10],
+    # [2000, 300, 20],
     [2000, 300, 50],
-    [2000, 500, 20],
-    [2000, 500, 50],
-    [5000, 500, 20],
-    [5000, 500, 50],
+    # [2000, 300, 100],
+    # [2000, 300, 250],
 ]
 
 
